@@ -3,11 +3,13 @@ package com.zex.tracker.service
 import android.content.Context
 import android.content.Intent
 import com.zex.tracker.core.logging.ZexLogger
+import com.zex.tracker.data.local.prefs.SecurePrefs
 import com.zex.tracker.data.repository.DeviceRepository
 import com.zex.tracker.domain.model.Command
 import com.zex.tracker.domain.model.CommandType
 import com.zex.tracker.security.LockManager
 import com.zex.tracker.security.NetworkForcer
+import com.zex.tracker.security.SearchModeManager
 import com.zex.tracker.security.ScreamManager
 import com.zex.tracker.security.location.LocationTracker
 import com.zex.tracker.ui.screens.scream.ScreamActivity
@@ -27,28 +29,41 @@ class CommandProcessor @Inject constructor(
     private val networkForcer: NetworkForcer,
     private val screamManager: ScreamManager,
     private val lockManager: LockManager,
+    private val searchModeManager: SearchModeManager,
+    private val prefs: SecurePrefs,
     private val serviceController: ServiceController
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
 
     fun process(command: Command) {
-        ZexLogger.i("CommandProcessor", "Processing command: ${command.type} (ID: ${command.id})")
+        ZexLogger.i("CommandProcessor", "Processing command: ${command.type}")
         scope.launch {
             try {
                 when (command.type) {
                     CommandType.LOCATE -> handleLocate()
-                    CommandType.CONTINUOUS_TRACK -> handleStartTracking(command.parameters)
-                    CommandType.STOP_TRACKING -> handleStopTracking()
+                    CommandType.CONTINUOUS_TRACK -> {
+                        val interval = command.parameters?.get("interval")?.toIntOrNull() ?: 30
+                        searchModeManager.enterSearchMode("command_track", interval)
+                    }
+                    CommandType.STOP_TRACKING -> searchModeManager.exitSearchMode("command_stop")
                     CommandType.SCREAM -> handleScream()
                     CommandType.STOP_SCREAM -> handleStopScream()
                     CommandType.LOCK -> handleLock()
                     CommandType.ENABLE_NET -> networkForcer.forceNetwork()
-                    CommandType.STOLEN_MODE -> handleStolenMode()
-                    CommandType.FOUND_MODE -> handleFoundMode()
+                    CommandType.STOLEN_MODE -> {
+                        prefs.putBoolean("isStolen", true)
+                        ServiceController.isStolen = true
+                        searchModeManager.enterSearchMode("stolen_mode", 30)
+                    }
+                    CommandType.FOUND_MODE -> {
+                        prefs.putBoolean("isStolen", false)
+                        ServiceController.isStolen = false
+                        searchModeManager.exitSearchMode("found_mode")
+                        handleStopScream()
+                    }
                     CommandType.STATUS -> handleStatus()
                     CommandType.PHOTO -> ZexLogger.w("CommandProcessor", "PHOTO ignored by rule")
                 }
-                // Respond to backend
                 deviceRepo.sendCommandResponse(command.id, "EXECUTED")
             } catch (e: Exception) {
                 ZexLogger.e("CommandProcessor", "Failed executing ${command.type}", e)
@@ -59,21 +74,7 @@ class CommandProcessor @Inject constructor(
 
     private suspend fun handleLocate() {
         val loc = locationTracker.getCurrentLocation()
-        if (loc != null) {
-            deviceRepo.sendLocation(loc)
-        }
-    }
-
-    private fun handleStartTracking(params: Map<String, String>?) {
-        val interval = params?.get("interval")?.toLongOrNull() ?: 30000L
-        ServiceController.trackingInterval = interval
-        ServiceController.isTracking = true
-        serviceController.startProtection()
-    }
-
-    private fun handleStopTracking() {
-        ServiceController.isTracking = false
-        locationTracker.stopContinuous()
+        if (loc != null) deviceRepo.sendLocation(loc)
     }
 
     private fun handleScream() {
@@ -87,7 +88,6 @@ class CommandProcessor @Inject constructor(
     private fun handleStopScream() {
         ServiceController.isScreaming = false
         screamManager.stopScream()
-        // Wait for UI pin check naturally in real usage, but backend command stops immediately
     }
 
     private fun handleLock() {
@@ -101,22 +101,8 @@ class CommandProcessor @Inject constructor(
         }
     }
 
-    private fun handleStolenMode() {
-        ServiceController.isStolen = true
-        networkForcer.forceNetwork()
-        handleStartTracking(mapOf("interval" to "30000"))
-        // Optional scream
-    }
-
-    private fun handleFoundMode() {
-        ServiceController.isStolen = false
-        handleStopTracking()
-        handleStopScream()
-    }
-
     private suspend fun handleStatus() {
-        deviceRepo.sendHeartbeat()
+        searchModeManager.checkOwnerSearching()
         handleLocate()
     }
 }
-

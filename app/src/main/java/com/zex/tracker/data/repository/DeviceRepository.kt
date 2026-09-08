@@ -7,14 +7,14 @@ import com.zex.tracker.core.utils.BatteryUtils
 import com.zex.tracker.core.utils.NetworkUtils
 import com.zex.tracker.data.local.prefs.SecurePrefs
 import com.zex.tracker.data.remote.ApiResult
-import com.zex.tracker.data.remote.api.ZexApi
+import com.zex.tracker.data.remote.api.ZexExtendedApi
 import com.zex.tracker.data.remote.dto.*
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
 class DeviceRepository @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val api: ZexApi,
+    private val api: ZexExtendedApi,
     private val prefs: SecurePrefs
 ) : BaseRepository() {
 
@@ -33,7 +33,7 @@ class DeviceRepository @Inject constructor(
         api.sendLocation(payload)
     }
 
-    suspend fun sendHeartbeat(): ApiResult<Unit> = safeApiCall {
+    suspend fun sendHeartbeat(): ApiResult<HeartbeatResponsePayload> = safeApiCall {
         val payload = HeartbeatPayload(
             device_uid = prefs.getString(ZexConstants.KEY_DEVICE_UID) ?: "",
             battery = BatteryUtils.getBatteryLevel(context)
@@ -43,5 +43,14 @@ class DeviceRepository @Inject constructor(
 
     suspend fun sendCommandResponse(cmdId: Int, status: String): ApiResult<Unit> = safeApiCall {
         api.sendCommandResponse(cmdId, CommandResponsePayload(status))
+    }
+
+    suspend fun getDeviceStatus(): ApiResult<DeviceStatusPayload> = safeApiCall {
+        val uid = prefs.getString(ZexConstants.KEY_DEVICE_UID) ?: ""
+        api.getDeviceStatus(uid)
+    }
+
+    suspend fun sendAlert(payload: Map<String, String>): ApiResult<Unit> = safeApiCall {
+        api.sendAlert(payload)
     }
 }

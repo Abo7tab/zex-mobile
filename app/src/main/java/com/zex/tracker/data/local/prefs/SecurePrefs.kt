@@ -26,35 +26,21 @@ class SecurePrefs @Inject constructor(@ApplicationContext context: Context) {
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
     } catch (e: Exception) {
-        ZexLogger.e("SecurePrefs", "Failed to init EncryptedSharedPreferences. Falling back to standard.", e)
+        ZexLogger.e("SecurePrefs", "Failed to init EncryptedSharedPreferences. Falling back.", e)
         context.getSharedPreferences(ZexConstants.FALLBACK_PREFS_NAME, Context.MODE_PRIVATE)
     }
 
-    fun putString(key: String, value: String?) {
-        prefs.edit().putString(key, value).apply()
-    }
+    fun putString(key: String, value: String?) = prefs.edit().putString(key, value).apply()
+    fun getString(key: String, default: String? = null): String? = prefs.getString(key, default)
 
-    fun getString(key: String, default: String? = null): String? {
-        return prefs.getString(key, default)
-    }
+    fun putBoolean(key: String, value: Boolean) = prefs.edit().putBoolean(key, value).apply()
+    fun getBoolean(key: String, default: Boolean = false): Boolean = prefs.getBoolean(key, default)
 
-    fun putBoolean(key: String, value: Boolean) {
-        prefs.edit().putBoolean(key, value).apply()
-    }
+    fun putInt(key: String, value: Int) = prefs.edit().putInt(key, value).apply()
+    fun getInt(key: String, default: Int = 0): Int = prefs.getInt(key, default)
 
-    fun getBoolean(key: String, default: Boolean = false): Boolean {
-        return prefs.getBoolean(key, default)
-    }
+    fun putLong(key: String, value: Long) = prefs.edit().putLong(key, value).apply()
+    fun getLong(key: String, default: Long = 0L): Long = prefs.getLong(key, default)
 
-    fun putInt(key: String, value: Int) {
-        prefs.edit().putInt(key, value).apply()
-    }
-
-    fun getInt(key: String, default: Int = 0): Int {
-        return prefs.getInt(key, default)
-    }
-
-    fun clear() {
-        prefs.edit().clear().apply()
-    }
+    fun clear() = prefs.edit().clear().apply()
 }

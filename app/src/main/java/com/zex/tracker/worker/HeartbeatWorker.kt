@@ -9,16 +9,18 @@ import com.zex.tracker.data.repository.DeviceRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
+import com.zex.tracker.security.SearchModeManager
+
 @HiltWorker
 class HeartbeatWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
-    private val deviceRepo: DeviceRepository
+    private val searchModeManager: SearchModeManager
 ) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         return try {
             ZexLogger.i("HeartbeatWorker", "Running scheduled heartbeat")
-            deviceRepo.sendHeartbeat()
+            searchModeManager.checkOwnerSearching()
             Result.success()
         } catch (e: Exception) {
             ZexLogger.e("HeartbeatWorker", "Heartbeat failed", e)

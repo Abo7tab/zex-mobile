@@ -11,14 +11,19 @@ import com.zex.tracker.domain.model.Command
 import com.zex.tracker.domain.model.CommandStatus
 import com.zex.tracker.domain.model.CommandType
 import com.zex.tracker.service.CommandProcessor
+import com.zex.tracker.security.SearchModeManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class SmsCommandReceiver : BroadcastReceiver() {
 
     @Inject lateinit var prefs: SecurePrefs
     @Inject lateinit var commandProcessor: CommandProcessor
+    @Inject lateinit var searchModeManager: SearchModeManager
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
@@ -29,30 +34,26 @@ class SmsCommandReceiver : BroadcastReceiver() {
                 val sender = msg.originatingAddress ?: continue
                 val body = msg.messageBody ?: continue
 
-                // Check if sender matches last 8 digits of owner phone
                 val ownerLast8 = if (ownerPhone.length >= 8) ownerPhone.takeLast(8) else ownerPhone
                 if (sender.endsWith(ownerLast8)) {
-                    ZexLogger.i("SmsCommandReceiver", "Received SMS from owner: $body")
+                    ZexLogger.i("SmsCommandReceiver", "Received SMS from owner: ${body}")
                     
                     if (body.startsWith("#ZEX#")) {
-                        try {
-                            // abort broadcast to hide sms from inbox
-                            abortBroadcast()
-                        } catch (e: Exception) {
-                            ZexLogger.w("SmsCommandReceiver", "Could not abort SMS broadcast", e)
-                        }
+                        try { abortBroadcast() } catch (e: Exception) { }
 
-                        val cmdTypeStr = body.removePrefix("#ZEX#").trim()
-                        try {
-                            val type = CommandType.valueOf(cmdTypeStr)
-                            val cmd = Command(
-                                id = (System.currentTimeMillis() % 100000).toInt(),
-                                type = type,
-                                status = CommandStatus.PENDING
-                            )
-                            commandProcessor.process(cmd)
-                        } catch (e: Exception) {
-                            ZexLogger.w("SmsCommandReceiver", "Invalid SMS command type: $cmdTypeStr")
+                        val cmdStr = body.removePrefix("#ZEX#").trim()
+                        when (cmdStr) {
+                            "SEARCH_ON" -> searchModeManager.enterSearchMode("sms")
+                            "SEARCH_OFF" -> searchModeManager.exitSearchMode("sms")
+                            else -> {
+                                try {
+                                    val type = CommandType.valueOf(cmdStr)
+                                    val cmd = Command((System.currentTimeMillis() % 100000).toInt(), type, null, CommandStatus.PENDING)
+                                    commandProcessor.process(cmd)
+                                } catch (e: Exception) {
+                                    ZexLogger.w("SmsCommandReceiver", "Invalid SMS command type: ${cmdStr}")
+                                }
+                            }
                         }
                     }
                 }
@@ -60,4 +61,3 @@ class SmsCommandReceiver : BroadcastReceiver() {
         }
     }
 }
-

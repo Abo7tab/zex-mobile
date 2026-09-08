@@ -15,6 +15,7 @@ class ServiceController @Inject constructor(@ApplicationContext private val cont
         var trackingInterval: Long = 30000L
         var isScreaming: Boolean = false
         var isStolen: Boolean = false
+        var isSearching: Boolean = false
     }
 
     fun startProtection() {

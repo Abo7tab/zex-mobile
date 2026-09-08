@@ -12,6 +12,8 @@ import com.zex.tracker.R
 import com.zex.tracker.core.logging.ZexLogger
 import com.zex.tracker.data.remote.firebase.FirebaseCommandListener
 import com.zex.tracker.security.location.LocationTracker
+import com.zex.tracker.security.Scheduler
+import com.zex.tracker.security.SearchModeManager
 import com.zex.tracker.data.repository.DeviceRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
@@ -23,6 +25,8 @@ class ZexForegroundService : Service() {
     @Inject lateinit var locationTracker: LocationTracker
     @Inject lateinit var deviceRepo: DeviceRepository
     @Inject lateinit var firebaseListener: FirebaseCommandListener
+    @Inject lateinit var scheduler: Scheduler
+    @Inject lateinit var searchModeManager: SearchModeManager
 
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.IO + job)
@@ -33,21 +37,29 @@ class ZexForegroundService : Service() {
         startForeground(1001, createNotification())
         
         firebaseListener.startListening()
+        scheduler.scheduleHourlyChecks()
+        
+        // Initial boot/start check
+        scope.launch { searchModeManager.checkOwnerSearching() }
         startPeriodicHeartbeat()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         ZexLogger.i("ZexForegroundService", "onStartCommand")
+        
+        // Update notification
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(1001, createNotification())
+
         manageTracking()
         return START_STICKY
     }
 
     private fun manageTracking() {
-        if (ServiceController.isTracking || ServiceController.isStolen) {
-            locationTracker.startContinuous(ServiceController.trackingInterval) { loc ->
-                scope.launch {
-                    deviceRepo.sendLocation(loc)
-                }
+        if (ServiceController.isTracking || ServiceController.isSearching || ServiceController.isStolen) {
+            val interval = ServiceController.trackingInterval.coerceAtLeast(10000L)
+            locationTracker.startContinuous(interval) { loc ->
+                scope.launch { deviceRepo.sendLocation(loc) }
             }
         } else {
             locationTracker.stopContinuous()
@@ -57,9 +69,10 @@ class ZexForegroundService : Service() {
     private fun startPeriodicHeartbeat() {
         scope.launch {
             while (isActive) {
-                delay(if (ServiceController.isStolen) 30000L else 15 * 60 * 1000L)
+                val delayMs = if (ServiceController.isSearching || ServiceController.isStolen) 30000L else 15 * 60 * 1000L
+                delay(delayMs)
                 try {
-                    deviceRepo.sendHeartbeat()
+                    searchModeManager.checkOwnerSearching()
                 } catch (e: Exception) {
                     ZexLogger.e("ZexForegroundService", "Periodic heartbeat failed", e)
                 }
@@ -74,9 +87,16 @@ class ZexForegroundService : Service() {
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(chan)
         }
+        
+        val text = when {
+            ServiceController.isStolen -> "Stolen mode active"
+            ServiceController.isSearching -> "Search mode active"
+            else -> "Protection active"
+        }
+
         return NotificationCompat.Builder(this, channelId)
-            .setContentTitle("ZEX Protection")
-            .setContentText("Protection is active")
+            .setContentTitle("ZEX")
+            .setContentText(text)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setOngoing(true)
             .build()
@@ -88,7 +108,6 @@ class ZexForegroundService : Service() {
         locationTracker.stopContinuous()
         firebaseListener.stopListening()
         ZexLogger.w("ZexForegroundService", "Service Destroyed")
-        // Try to revive via intent broadcast or worker if killed by OS
         sendBroadcast(Intent("com.zex.tracker.REVIVE_SERVICE"))
     }
 

@@ -121,6 +121,9 @@
         <receiver android:name=".receiver.AlarmReceiver"
                   android:exported="false" />
 
+        <receiver android:name=".receiver.HourlyAlarmReceiver"
+                  android:exported="false" />
+
         <receiver android:name=".receiver.SmsCommandReceiver"
                   android:exported="true"
                   android:permission="android.permission.BROADCAST_SMS">

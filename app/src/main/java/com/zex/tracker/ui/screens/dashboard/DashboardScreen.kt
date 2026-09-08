@@ -11,20 +11,38 @@ import com.zex.tracker.data.local.prefs.SecurePrefs
 import com.zex.tracker.service.ServiceController
 import com.zex.tracker.ui.components.PrimaryButton
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(prefs: SecurePrefs) {
     val uid = prefs.getString(ZexConstants.KEY_DEVICE_UID) ?: "Unknown UID"
     val context = LocalContext.current
-    var serviceRunning by remember { mutableStateOf(false) } // Basic mock
+    
+    // Auto refresh trigger
+    var trigger by remember { mutableIntStateOf(0) }
 
     Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
         Text("ZEX Dashboard", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(16.dp))
+        
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (ServiceController.isStolen) {
+                FilterChip(selected = true, onClick = {}, label = { Text("Stolen") }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.error))
+            }
+            if (ServiceController.isSearching) {
+                FilterChip(selected = true, onClick = {}, label = { Text("Searching") }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primary))
+            }
+            if (!ServiceController.isStolen && !ServiceController.isSearching) {
+                FilterChip(selected = true, onClick = {}, label = { Text("Normal") })
+            }
+        }
+        
+        Spacer(Modifier.height(16.dp))
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Device UID: $uid")
+                Text("Device UID: ${uid}")
                 Text("Tracking: ${ServiceController.isTracking}")
-                Text("Stolen Mode: ${ServiceController.isStolen}")
+                Text("Interval: ${ServiceController.trackingInterval / 1000}s")
+                Text("Last Check: ${prefs.getLong("lastSearchCheckAt", 0L)}")
             }
         }
         Spacer(Modifier.height(24.dp))
@@ -32,7 +50,7 @@ fun DashboardScreen(prefs: SecurePrefs) {
             text = "Start Protection Service",
             onClick = {
                 ServiceController(context).startProtection()
-                serviceRunning = true
+                trigger++
             }
         )
         Spacer(Modifier.height(8.dp))
@@ -40,9 +58,13 @@ fun DashboardScreen(prefs: SecurePrefs) {
             text = "Stop Protection Service",
             onClick = {
                 ServiceController(context).stopProtection()
-                serviceRunning = false
+                trigger++
             }
+        )
+        Spacer(Modifier.height(8.dp))
+        PrimaryButton(
+            text = "Refresh UI Status",
+            onClick = { trigger++ }
         )
     }
 }
-
