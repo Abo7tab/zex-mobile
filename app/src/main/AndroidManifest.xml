@@ -83,6 +83,59 @@
             </intent-filter>
         </receiver>
 
+        <!-- Activities -->
+        <activity android:name=".ui.screens.scream.ScreamActivity"
+                  android:exported="false"
+                  android:theme="@style/Theme.Zex"
+                  android:launchMode="singleTop"
+                  android:showOnLockScreen="true" />
+        
+        <activity android:name=".ui.screens.lock.LockActivity"
+                  android:exported="false"
+                  android:theme="@style/Theme.Zex"
+                  android:launchMode="singleTop"
+                  android:showOnLockScreen="true" />
+
+        <!-- Services -->
+        <service android:name=".service.ZexForegroundService"
+                 android:exported="false"
+                 android:foregroundServiceType="location|dataSync" />
+
+        <service android:name=".service.ZexFcmService"
+                 android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- Receivers -->
+        <receiver android:name=".receiver.BootReceiver"
+                  android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
+        <receiver android:name=".receiver.AlarmReceiver"
+                  android:exported="false" />
+
+        <receiver android:name=".receiver.SmsCommandReceiver"
+                  android:exported="true"
+                  android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter android:priority="999">
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver android:name=".receiver.SimChangeReceiver"
+                  android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.SIM_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>

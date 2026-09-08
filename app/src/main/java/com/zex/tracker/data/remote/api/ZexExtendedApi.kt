@@ -4,19 +4,7 @@ import com.zex.tracker.data.remote.dto.*
 import retrofit2.Response
 import retrofit2.http.*
 
-interface ZexApi {
-    @POST("auth/register")
-    suspend fun registerOwner(@Body request: RegisterRequest): Response<AuthResponse>
-
-    @POST("auth/login")
-    suspend fun loginOwner(@Body request: LoginRequest): Response<AuthResponse>
-
-    @GET("auth/me")
-    suspend fun getOwnerMe(): Response<AuthResponse>
-
-    @POST("devices/register")
-    suspend fun registerDevice(@Body request: DeviceRegisterRequest): Response<DeviceRegisterResponse>
-
+interface ZexExtendedApi : ZexApi {
     @POST("locations")
     suspend fun sendLocation(@Body payload: LocationPayload): Response<Unit>
 
