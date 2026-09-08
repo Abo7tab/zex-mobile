@@ -26,7 +26,7 @@ class HourlyCheckWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         ZexLogger.i("HourlyCheckWorker", "Running hourly check")
         networkForcer.forceNetwork()
-        val isSearching = searchModeManager.checkOwnerSearching()
+        val isSearching = searchModeManager.checkOwnerSearching()?.owner_is_searching ?: false
 
         if (!isSearching) {
             ZexLogger.i("HourlyCheckWorker", "Not searching. Taking snapshot.")

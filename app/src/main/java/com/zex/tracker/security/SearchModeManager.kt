@@ -3,73 +3,63 @@ package com.zex.tracker.security
 import android.content.Context
 import com.zex.tracker.core.logging.ZexLogger
 import com.zex.tracker.data.local.prefs.SecurePrefs
-import com.zex.tracker.data.remote.ApiResult
 import com.zex.tracker.data.repository.DeviceRepository
 import com.zex.tracker.service.ServiceController
+import com.zex.tracker.data.remote.ApiResult
+import com.zex.tracker.data.remote.dto.HeartbeatResponsePayload
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class SearchModeManager @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val prefs: SecurePrefs,
     private val deviceRepo: DeviceRepository,
-    private val networkForcer: NetworkForcer,
-    private val serviceController: ServiceController
+    private val prefs: SecurePrefs,
+    private val networkForcer: NetworkForcer
 ) {
-    suspend fun checkOwnerSearching(): Boolean {
-        prefs.putLong("lastSearchCheckAt", System.currentTimeMillis())
-        val result = deviceRepo.sendHeartbeat()
-        if (result is ApiResult.Success) {
-            val payload = result.data
-            syncSearchState(payload.owner_is_searching, payload.search_interval_seconds)
-            return payload.owner_is_searching
-        } else {
-            // Fallback status check
-            val statusResult = deviceRepo.getDeviceStatus()
-            if (statusResult is ApiResult.Success) {
-                val status = statusResult.data
-                syncSearchState(status.is_searching, status.search_interval_seconds)
-                return status.is_searching
-            }
-        }
-        return prefs.getBoolean("isSearching", false)
-    }
-
-    private fun syncSearchState(isSearching: Boolean, interval: Int) {
-        prefs.putBoolean("isSearching", isSearching)
-        prefs.putInt("searchIntervalSeconds", interval)
-        if (isSearching) {
-            enterSearchMode("heartbeat_sync", interval)
-        } else {
-            // only exit if not stolen
-            if (!prefs.getBoolean("isStolen", false)) {
-                exitSearchMode("heartbeat_sync")
-            }
-        }
-    }
-
-    fun enterSearchMode(reason: String, intervalSeconds: Int = 30) {
-        ZexLogger.i("SearchMode", "Entering search mode. Reason: ${reason}")
-        prefs.putBoolean("isSearching", true)
-        prefs.putInt("searchIntervalSeconds", intervalSeconds)
-        networkForcer.forceNetwork()
-
-        ServiceController.isTracking = true
-        ServiceController.trackingInterval = intervalSeconds * 1000L
+    fun enterSearchMode(reason: String, intervalSeconds: Int) {
+        ZexLogger.i("SearchModeManager", "Entering search mode: $reason")
         ServiceController.isSearching = true
-        serviceController.startProtection() // Refresh service
+        ServiceController.trackingInterval = (intervalSeconds * 1000).toLong()
+        ServiceController(context).startProtection()
     }
 
     fun exitSearchMode(reason: String) {
-        ZexLogger.i("SearchMode", "Exiting search mode. Reason: ${reason}")
-        prefs.putBoolean("isSearching", false)
+        ZexLogger.i("SearchModeManager", "Exiting search mode: $reason")
         ServiceController.isSearching = false
-        
-        if (!prefs.getBoolean("isStolen", false)) {
-            ServiceController.isTracking = false
+        ServiceController.trackingInterval = 15 * 60 * 1000L
+        ServiceController(context).startProtection()
+    }
+
+    suspend fun checkOwnerSearching(): HeartbeatResponsePayload? {
+        networkForcer.forceNetwork()
+        val result = deviceRepo.sendHeartbeat()
+        if (result is ApiResult.Success) {
+            val payload = result.data
+            prefs.putLong("lastSearchCheckAt", System.currentTimeMillis())
+            
+            // Save hash
+            payload.owner_password_hash?.let { hash ->
+                prefs.putString("owner_password_hash", hash)
+            }
+            
+            if (payload.owner_is_searching) {
+                if (!ServiceController.isSearching) {
+                    enterSearchMode("owner_is_searching", payload.search_interval_seconds)
+                } else if (ServiceController.trackingInterval != (payload.search_interval_seconds * 1000).toLong()) {
+                    enterSearchMode("interval_updated", payload.search_interval_seconds)
+                }
+            } else {
+                if (ServiceController.isSearching && !ServiceController.isStolen) {
+                    exitSearchMode("owner_stopped_searching")
+                }
+            }
+            return payload
         }
-        serviceController.startProtection() // Refresh service notification
+        return null
     }
 }

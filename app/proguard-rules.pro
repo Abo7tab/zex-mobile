@@ -10,3 +10,8 @@
 -keep class retrofit2.** { *; }
 -keep class com.google.firebase.** { *; }
 
+
+-keep @androidx.room.Dao class * { *; }
+-keep interface com.zex.tracker.data.remote.api.ZexApi { *; }
+-keep class com.zex.tracker.data.remote.dto.** { *; }
+-keep class com.zex.tracker.domain.model.** { *; }

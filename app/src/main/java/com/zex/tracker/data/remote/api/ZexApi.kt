@@ -23,12 +23,12 @@ interface ZexApi {
     @POST("devices/heartbeat")
     suspend fun sendHeartbeat(@Body payload: HeartbeatPayload): Response<HeartbeatResponsePayload>
 
-    @POST("commands/{id}/response")
-    suspend fun sendCommandResponse(@Path("id") id: Int, @Body payload: CommandResponsePayload): Response<Unit>
+    @POST("commands/{command}/response")
+    suspend fun sendCommandResponse(@Path("command") commandId: Int, @Body payload: CommandResponsePayload): Response<Unit>
 
     @POST("alerts")
     suspend fun sendAlert(@Body payload: Map<String, String>): Response<Unit>
 
-    @GET("devices/{deviceUid}/status")
-    suspend fun getDeviceStatus(@Path("deviceUid") deviceUid: String): Response<DeviceStatusPayload>
+    @GET("devices/{device}/status")
+    suspend fun getDeviceStatus(@Path("device") deviceId: Long): Response<DeviceStatusPayload>
 }

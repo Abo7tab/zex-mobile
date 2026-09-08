@@ -47,7 +47,12 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(authInterceptor: Interceptor): OkHttpClient {
         val logging = HttpLoggingInterceptor { message ->
-            ZexLogger.d("OkHttp", message)
+            // Redact passwords from request body logs
+            if (message.contains("password") || message.contains("pin_code") || message.contains("password_hash")) {
+                ZexLogger.d("OkHttp", "[REDACTED SENSITIVE BODY]")
+            } else {
+                ZexLogger.d("OkHttp", message)
+            }
         }.apply {
             level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
             redactHeader(ZexConstants.HEADER_AUTHORIZATION)

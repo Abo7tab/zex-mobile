@@ -34,7 +34,7 @@ class ZexFcmService : FirebaseMessagingService() {
             val typeStr = data["type"] ?: return
             val type = CommandType.valueOf(typeStr)
             
-            val cmd = Command(cmdId, type, data, CommandStatus.PENDING)
+            val cmd = com.zex.tracker.data.remote.dto.CommandDto(cmdId, type.name, data, "PENDING")
             commandProcessor.process(cmd)
         } catch (e: Exception) {
             ZexLogger.e("FCM", "Failed to process FCM data", e)

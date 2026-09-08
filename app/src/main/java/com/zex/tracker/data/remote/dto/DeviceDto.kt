@@ -14,8 +14,9 @@ data class DeviceRegisterResponse(
 )
 
 data class DeviceDto(
-    val id: Int,
+    val id: Long,
     val device_uid: String,
-    val name: String,
-    val status: String
+    val device_name: String,
+    val device_model: String,
+    val android_version: String
 )

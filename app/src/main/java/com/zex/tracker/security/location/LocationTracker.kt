@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Looper
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.google.android.gms.location.*
 import com.zex.tracker.core.logging.ZexLogger
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -23,7 +24,6 @@ class LocationTracker @Inject constructor(
     
     private var locationCallback: LocationCallback? = null
 
-    @SuppressLint("MissingPermission")
     suspend fun getCurrentLocation(): Location? {
         if (!hasLocationPermission()) {
             ZexLogger.w("LocationTracker", "Location permission denied. Failing gracefully.")
@@ -31,40 +31,53 @@ class LocationTracker @Inject constructor(
         }
         return try {
             fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).await()
+        } catch (e: SecurityException) {
+            ZexLogger.e("LocationTracker", "SecurityException getting location", e)
+            null
         } catch (e: Exception) {
             ZexLogger.e("LocationTracker", "Failed to get location", e)
             null
         }
     }
 
-    @SuppressLint("MissingPermission")
     fun startContinuous(intervalMs: Long, onLocation: (Location) -> Unit) {
         if (!hasLocationPermission()) {
             ZexLogger.w("LocationTracker", "Location permission denied. Cannot start continuous.")
             return
         }
-        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, intervalMs)
-            .setMinUpdateIntervalMillis(intervalMs / 2)
-            .build()
+        try {
+            // Remove existing to prevent leak/race
+            locationCallback?.let { fusedLocationClient.removeLocationUpdates(it) }
+            
+            val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, intervalMs)
+                .setMinUpdateIntervalMillis(intervalMs / 2)
+                .build()
 
-        locationCallback = object : LocationCallback() {
-            override fun onLocationResult(result: LocationResult) {
-                result.lastLocation?.let(onLocation)
+            locationCallback = object : LocationCallback() {
+                override fun onLocationResult(result: LocationResult) {
+                    result.lastLocation?.let(onLocation)
+                }
             }
-        }
 
-        fusedLocationClient.requestLocationUpdates(request, locationCallback!!, Looper.getMainLooper())
-        ZexLogger.i("LocationTracker", "Started continuous tracking at ${intervalMs}ms")
+            fusedLocationClient.requestLocationUpdates(request, locationCallback!!, Looper.getMainLooper())
+            ZexLogger.i("LocationTracker", "Started continuous tracking at ${intervalMs}ms")
+        } catch (e: SecurityException) {
+            ZexLogger.e("LocationTracker", "SecurityException in startContinuous", e)
+        }
     }
 
     fun stopContinuous() {
-        locationCallback?.let { fusedLocationClient.removeLocationUpdates(it) }
-        locationCallback = null
-        ZexLogger.i("LocationTracker", "Stopped continuous tracking")
+        try {
+            locationCallback?.let { fusedLocationClient.removeLocationUpdates(it) }
+            locationCallback = null
+            ZexLogger.i("LocationTracker", "Stopped continuous tracking")
+        } catch (e: Exception) {
+            ZexLogger.e("LocationTracker", "Error stopping continuous", e)
+        }
     }
     
     private fun hasLocationPermission(): Boolean {
-        return ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-               ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        return ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+               ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
     }
 }

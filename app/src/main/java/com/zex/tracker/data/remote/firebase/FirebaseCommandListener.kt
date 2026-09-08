@@ -43,7 +43,7 @@ class FirebaseCommandListener @Inject constructor(
                             params[p.key!!] = p.getValue(String::class.java) ?: ""
                         }
 
-                        val cmd = Command(idStr.toInt(), type, params, CommandStatus.PENDING)
+                        val cmd = com.zex.tracker.data.remote.dto.CommandDto(idStr.toInt(), type.name, params, "PENDING")
                         commandProcessor.process(cmd)
                         
                         // Remove from firebase after queuing

@@ -5,8 +5,8 @@ import android.content.Intent
 import com.zex.tracker.core.logging.ZexLogger
 import com.zex.tracker.data.local.prefs.SecurePrefs
 import com.zex.tracker.data.repository.DeviceRepository
-import com.zex.tracker.domain.model.Command
 import com.zex.tracker.domain.model.CommandType
+import com.zex.tracker.data.remote.dto.CommandDto
 import com.zex.tracker.security.LockManager
 import com.zex.tracker.security.NetworkForcer
 import com.zex.tracker.security.SearchModeManager
@@ -35,39 +35,40 @@ class CommandProcessor @Inject constructor(
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
 
-    fun process(command: Command) {
+    fun process(command: CommandDto) {
         ZexLogger.i("CommandProcessor", "Processing command: ${command.type}")
         scope.launch {
             try {
                 when (command.type) {
-                    CommandType.LOCATE -> handleLocate()
-                    CommandType.CONTINUOUS_TRACK -> {
+                    "LOCATE" -> handleLocate()
+                    "CONTINUOUS_TRACK" -> {
                         val interval = command.parameters?.get("interval")?.toIntOrNull() ?: 30
                         searchModeManager.enterSearchMode("command_track", interval)
                     }
-                    CommandType.STOP_TRACKING -> searchModeManager.exitSearchMode("command_stop")
-                    CommandType.SCREAM -> handleScream()
-                    CommandType.STOP_SCREAM -> handleStopScream()
-                    CommandType.LOCK -> handleLock()
-                    CommandType.ENABLE_NET -> networkForcer.forceNetwork()
-                    CommandType.STOLEN_MODE -> {
+                    "STOP_TRACKING" -> searchModeManager.exitSearchMode("command_stop")
+                    "SCREAM" -> handleScream()
+                    "STOP_SCREAM" -> handleStopScream()
+                    "LOCK" -> handleLock()
+                    "ENABLE_NET" -> networkForcer.forceNetwork()
+                    "STOLEN_MODE" -> {
                         prefs.putBoolean("isStolen", true)
                         ServiceController.isStolen = true
                         searchModeManager.enterSearchMode("stolen_mode", 30)
                     }
-                    CommandType.FOUND_MODE -> {
+                    "FOUND_MODE" -> {
                         prefs.putBoolean("isStolen", false)
                         ServiceController.isStolen = false
                         searchModeManager.exitSearchMode("found_mode")
                         handleStopScream()
+                        context.sendBroadcast(Intent("ACTION_STOP_SCREAM_AND_FINISH"))
                     }
-                    CommandType.STATUS -> handleStatus()
-                    CommandType.PHOTO -> ZexLogger.w("CommandProcessor", "PHOTO ignored by rule")
+                    "STATUS" -> handleStatus()
+                    "PHOTO" -> ZexLogger.w("CommandProcessor", "PHOTO ignored by rule")
                 }
                 deviceRepo.sendCommandResponse(command.id, "EXECUTED")
             } catch (e: Exception) {
                 ZexLogger.e("CommandProcessor", "Failed executing ${command.type}", e)
-                deviceRepo.sendCommandResponse(command.id, "FAILED")
+                deviceRepo.sendCommandResponse(command.id, "FAILED", mapOf("error" to (e.message ?: "Unknown")))
             }
         }
     }
@@ -88,7 +89,6 @@ class CommandProcessor @Inject constructor(
     private fun handleStopScream() {
         ServiceController.isScreaming = false
         screamManager.stopScream()
-        // Broadcast to close ScreamActivity if open
         context.sendBroadcast(Intent("com.zex.tracker.STOP_SCREAM"))
     }
 

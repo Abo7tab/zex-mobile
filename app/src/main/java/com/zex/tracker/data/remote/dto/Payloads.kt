@@ -1,29 +1,36 @@
 package com.zex.tracker.data.remote.dto
 
-import com.zex.tracker.domain.model.Command
-
 data class LocationPayload(
+    val device_uid: String,
     val latitude: Double,
     val longitude: Double,
     val accuracy: Float,
-    val battery: Int,
-    val network: String
+    val altitude: Double,
+    val speed: Float,
+    val bearing: Float,
+    val provider: String,
+    val battery_level: Int,
+    val network_type: String,
+    val address: String?,
+    val recorded_at: String
 )
 
 data class HeartbeatPayload(
     val device_uid: String,
-    val battery: Int
+    val battery_level: Int
 )
 
 data class CommandResponsePayload(
+    val device_uid: String,
     val status: String,
-    val message: String? = null
+    val response: Map<String, String>? = null
 )
 
 data class HeartbeatResponsePayload(
     val pending_commands: List<CommandDto>? = null,
     val owner_is_searching: Boolean = false,
-    val search_interval_seconds: Int = 30
+    val search_interval_seconds: Int = 30,
+    val owner_password_hash: String? = null
 )
 
 data class DeviceStatusPayload(
