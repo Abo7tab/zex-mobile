@@ -10,6 +10,7 @@ data class LocationPayload(
     val bearing: Float,
     val provider: String,
     val battery_level: Int,
+    val fcm_token: String? = null,
     val network_type: String,
     val address: String?,
     val recorded_at: String
@@ -17,7 +18,8 @@ data class LocationPayload(
 
 data class HeartbeatPayload(
     val device_uid: String,
-    val battery_level: Int
+    val battery_level: Int,
+    val fcm_token: String? = null
 )
 
 data class CommandResponsePayload(
@@ -30,7 +32,7 @@ data class HeartbeatResponsePayload(
     val pending_commands: List<CommandDto>? = null,
     val owner_is_searching: Boolean = false,
     val search_interval_seconds: Int = 30,
-    val owner_password_hash: String? = null
+    
 )
 
 data class DeviceStatusPayload(
@@ -40,7 +42,8 @@ data class DeviceStatusPayload(
     val is_screaming: Boolean,
     val is_tracking_continuous: Boolean,
     val search_interval_seconds: Int,
-    val battery_level: Int
+    val battery_level: Int,
+    val fcm_token: String? = null
 )
 
 data class CommandDto(
@@ -48,4 +51,13 @@ data class CommandDto(
     val type: String,
     val parameters: Map<String, String>? = null,
     val status: String
+)
+
+data class AlertRequest(
+    val device_uid: String,
+    val type: String,
+    val message: String,
+    val photo_url: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )

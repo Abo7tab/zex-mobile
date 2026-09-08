@@ -57,9 +57,13 @@ class CommandProcessor @Inject constructor(
                     }
                     "FOUND_MODE" -> {
                         prefs.putBoolean("isStolen", false)
+                        ServiceController.isTracking = false
                         ServiceController.isStolen = false
+                        ServiceController.isScreaming = false
+                        ServiceController.isSearching = false
                         searchModeManager.exitSearchMode("found_mode")
                         handleStopScream()
+                        locationTracker.stopContinuous()
                         context.sendBroadcast(Intent("ACTION_STOP_SCREAM_AND_FINISH"))
                     }
                     "STATUS" -> handleStatus()

@@ -12,7 +12,7 @@ interface ZexApi {
     suspend fun loginOwner(@Body request: LoginRequest): Response<AuthResponse>
 
     @GET("auth/me")
-    suspend fun getOwnerMe(): Response<AuthResponse>
+    suspend fun getOwnerMe(): Response<OwnerDto>
 
     @POST("devices/register")
     suspend fun registerDevice(@Body request: DeviceRegisterRequest): Response<DeviceRegisterResponse>
@@ -26,8 +26,11 @@ interface ZexApi {
     @POST("commands/{command}/response")
     suspend fun sendCommandResponse(@Path("command") commandId: Int, @Body payload: CommandResponsePayload): Response<Unit>
 
+    @POST("devices/{device}/stop-scream")
+    suspend fun stopScream(@Path("device") deviceId: Long, @Body payload: Map<String, String>): Response<Unit>
+
     @POST("alerts")
-    suspend fun sendAlert(@Body payload: Map<String, String>): Response<Unit>
+    suspend fun sendAlert(@Body payload: AlertRequest): Response<Unit>
 
     @GET("devices/{device}/status")
     suspend fun getDeviceStatus(@Path("device") deviceId: Long): Response<DeviceStatusPayload>

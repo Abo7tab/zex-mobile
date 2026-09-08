@@ -42,10 +42,7 @@ class SearchModeManager @Inject constructor(
             val payload = result.data
             prefs.putLong("lastSearchCheckAt", System.currentTimeMillis())
             
-            // Save hash
-            payload.owner_password_hash?.let { hash ->
-                prefs.putString("owner_password_hash", hash)
-            }
+
             
             if (payload.owner_is_searching) {
                 if (!ServiceController.isSearching) {

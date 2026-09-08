@@ -15,7 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import at.favre.lib.crypto.bcrypt.BCrypt
 import com.zex.tracker.data.local.prefs.SecurePrefs
 import com.zex.tracker.security.ScreamManager
 import com.zex.tracker.service.ServiceController
@@ -28,6 +27,8 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class ScreamActivity : ComponentActivity() {
+
+    @Inject lateinit var deviceRepo: com.zex.tracker.data.repository.DeviceRepository
 
     @Inject lateinit var screamManager: ScreamManager
     @Inject lateinit var prefs: SecurePrefs
@@ -69,22 +70,18 @@ class ScreamActivity : ComponentActivity() {
                 if (error) Text("Incorrect Password", color = Color.Yellow)
                 Spacer(Modifier.height(16.dp))
                 Button(onClick = {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        val storedHash = prefs.getString("owner_password_hash")
-                        if (!storedHash.isNullOrEmpty()) {
-                            val verified = BCrypt.verifyer().verify(pinInput.toCharArray(), storedHash.toByteArray()).verified
-                            if (verified) {
-                                screamManager.stopScream()
-                                ServiceController.isScreaming = false
-                                finish()
-                            } else {
-                                error = true
-                            }
-                        } else {
-                            // API fallback not fully needed if we have hash, but we gracefully log
-                            ZexLogger.w("ScreamActivity", "No stored hash available to verify.")
-                            error = true
+                    val storedSecret = prefs.getString("alarm_secret")
+                    if (pinInput == storedSecret) {
+                        screamManager.stopScream()
+                        ServiceController.isScreaming = false
+                        CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                deviceRepo.stopScream(pinInput)
+                            } catch(e: Exception) {}
                         }
+                        finish()
+                    } else {
+                        error = true
                     }
                 }) {
                     Text("STOP")

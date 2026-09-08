@@ -13,6 +13,9 @@ import com.zex.tracker.domain.model.CommandType
 import com.zex.tracker.service.CommandProcessor
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 
 @Singleton
 class FirebaseCommandListener @Inject constructor(
@@ -44,10 +47,12 @@ class FirebaseCommandListener @Inject constructor(
                         }
 
                         val cmd = com.zex.tracker.data.remote.dto.CommandDto(idStr.toInt(), type.name, params, "PENDING")
-                        commandProcessor.process(cmd)
-                        
-                        // Remove from firebase after queuing
-                        child.ref.removeValue()
+                        // Queue command and remove on success inside CommandProcessor OR launch here
+                        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                            commandProcessor.process(cmd)
+                            // Clean up RTDB AFTER processing
+                            child.ref.removeValue()
+                        }
                     } catch (e: Exception) {
                         ZexLogger.e("Firebase", "Failed parsing command", e)
                     }
@@ -64,4 +69,3 @@ class FirebaseCommandListener @Inject constructor(
         listener?.let { commandRef?.removeEventListener(it) }
     }
 }
-

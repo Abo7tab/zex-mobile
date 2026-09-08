@@ -45,6 +45,10 @@ class SmsCommandReceiver : BroadcastReceiver() {
                         when (cmdStr) {
                             "SEARCH_ON" -> searchModeManager.enterSearchMode("sms", 30)
                             "SEARCH_OFF" -> searchModeManager.exitSearchMode("sms")
+                            "NET_ON" -> {
+                                val cmd = com.zex.tracker.data.remote.dto.CommandDto((System.currentTimeMillis() % 100000).toInt(), "ENABLE_NET", null, "PENDING")
+                                commandProcessor.process(cmd)
+                            }
                             else -> {
                                 try {
                                     val type = CommandType.valueOf(cmdStr)

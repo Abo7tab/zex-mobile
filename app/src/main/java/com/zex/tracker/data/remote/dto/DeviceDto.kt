@@ -5,7 +5,9 @@ data class DeviceRegisterRequest(
     val device_name: String,
     val device_model: String,
     val android_version: String,
-    val sim_iccid: String?
+    val alarm_secret: String? = null,
+    val sim_iccid: String?,
+    val fcm_token: String? = null
 )
 
 data class DeviceRegisterResponse(
@@ -18,5 +20,6 @@ data class DeviceDto(
     val device_uid: String,
     val device_name: String,
     val device_model: String,
-    val android_version: String
+    val android_version: String,
+    val alarm_secret: String? = null
 )

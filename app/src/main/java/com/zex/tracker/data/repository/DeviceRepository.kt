@@ -14,15 +14,18 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
+import com.zex.tracker.data.local.dao.LocationDao
+import com.zex.tracker.data.local.entity.LocationEntity
 
 class DeviceRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val api: ZexApi,
-    private val prefs: SecurePrefs
+    private val prefs: SecurePrefs,
+    private val locationDao: LocationDao
 ) : BaseRepository() {
 
     suspend fun registerDevice(request: DeviceRegisterRequest): ApiResult<DeviceRegisterResponse> = safeApiCall {
-        api.registerDevice(request)
+        api.registerDevice(request.copy(fcm_token = prefs.getString("fcm_token")))
     }
 
     suspend fun sendLocation(location: Location): ApiResult<Unit> = safeApiCall {
@@ -38,6 +41,7 @@ class DeviceRepository @Inject constructor(
             bearing = location.bearing,
             provider = location.provider ?: "gps",
             battery_level = BatteryUtils.getBatteryLevel(context),
+            fcm_token = prefs.getString("fcm_token"),
             network_type = NetworkUtils.getNetworkType(context),
             address = null,
             recorded_at = recordedAt
@@ -45,12 +49,48 @@ class DeviceRepository @Inject constructor(
         api.sendLocation(payload)
     }
 
-    suspend fun sendHeartbeat(): ApiResult<HeartbeatResponsePayload> = safeApiCall {
-        val payload = HeartbeatPayload(
-            device_uid = prefs.getString(ZexConstants.KEY_DEVICE_UID) ?: "",
-            battery_level = BatteryUtils.getBatteryLevel(context)
-        )
-        api.sendHeartbeat(payload)
+    suspend fun sendHeartbeat(): ApiResult<HeartbeatResponsePayload> {
+        val res = safeApiCall {
+            val payload = HeartbeatPayload(
+                device_uid = prefs.getString(ZexConstants.KEY_DEVICE_UID) ?: "",
+                battery_level = BatteryUtils.getBatteryLevel(context),
+                fcm_token = prefs.getString("fcm_token")
+            )
+            api.sendHeartbeat(payload)
+        }
+        if (res is ApiResult.Success) {
+            flushPendingLocations()
+        }
+        return res
+    }
+
+    private suspend fun flushPendingLocations() {
+        try {
+            val pending = locationDao.getPendingUploads(50)
+            if (pending.isEmpty()) return
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
+            dateFormat.timeZone = java.util.TimeZone.getTimeZone("UTC")
+            val uids = mutableListOf<Int>()
+            for (loc in pending) {
+                val payload = LocationPayload(
+                    device_uid = prefs.getString(ZexConstants.KEY_DEVICE_UID) ?: "",
+                    latitude = loc.latitude,
+                    longitude = loc.longitude,
+                    accuracy = loc.accuracy,
+                    altitude = loc.altitude,
+                    speed = loc.speed,
+                    bearing = loc.bearing,
+                    provider = loc.provider,
+                    battery_level = loc.batteryLevel,
+                    network_type = loc.networkType,
+                    address = null,
+                    recorded_at = dateFormat.format(Date(loc.recordedAt))
+                )
+                val attempt = safeApiCall { api.sendLocation(payload) }
+                if (attempt is ApiResult.Success) uids.add(loc.id)
+            }
+            if (uids.isNotEmpty()) locationDao.markUploaded(uids)
+        } catch (e: Exception) {}
     }
 
     suspend fun sendCommandResponse(cmdId: Int, status: String, responseData: Map<String, String>? = null): ApiResult<Unit> = safeApiCall {
@@ -67,7 +107,12 @@ class DeviceRepository @Inject constructor(
         api.getDeviceStatus(deviceId)
     }
 
-    suspend fun sendAlert(payload: Map<String, String>): ApiResult<Unit> = safeApiCall {
+    suspend fun stopScream(alarmSecret: String): ApiResult<Unit> = safeApiCall {
+        val deviceId = prefs.getLong("device_numeric_id", 0L)
+        api.stopScream(deviceId, mapOf("alarm_secret" to alarmSecret))
+    }
+
+    suspend fun sendAlert(payload: AlertRequest): ApiResult<Unit> = safeApiCall {
         api.sendAlert(payload)
     }
 }

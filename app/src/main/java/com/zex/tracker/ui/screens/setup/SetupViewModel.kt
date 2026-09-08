@@ -89,6 +89,7 @@ class SetupViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     prefs.putString(ZexConstants.KEY_DEVICE_TOKEN, res.data.device_token)
                     prefs.putString(ZexConstants.KEY_DEVICE_UID, finalUid)
+                    prefs.putString("alarm_secret", res.data.device.alarm_secret ?: "")
                     prefs.putLong("device_numeric_id", res.data.device.id)
                     ZexLogger.i("Setup", "Device registered successfully")
                     _uiState.value = _uiState.value.copy(isLoading = false)
