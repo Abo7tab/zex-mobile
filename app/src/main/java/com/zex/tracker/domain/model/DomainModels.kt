@@ -14,11 +14,7 @@ data class Device(
     val status: String
 )
 
-data class Command(
-    val id: Int,
-    val type: String,
-    val status: String
-)
+
 
 data class Alert(
     val id: Int,

@@ -50,6 +50,8 @@ object NetworkModule {
             ZexLogger.d("OkHttp", message)
         }.apply {
             level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
+            redactHeader(ZexConstants.HEADER_AUTHORIZATION)
+            redactHeader(ZexConstants.HEADER_DEVICE_TOKEN)
         }
 
         return OkHttpClient.Builder()

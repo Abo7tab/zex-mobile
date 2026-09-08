@@ -16,7 +16,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class Scheduler @Inject constructor(private val context: Context) {
+class Scheduler @Inject constructor(@dagger.hilt.android.qualifiers.ApplicationContext private val context: Context) {
 
     fun scheduleHourlyChecks() {
         scheduleAlarmManager()

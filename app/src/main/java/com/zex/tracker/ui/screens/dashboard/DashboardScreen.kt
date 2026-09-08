@@ -26,12 +26,15 @@ fun DashboardScreen(prefs: SecurePrefs) {
         
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (ServiceController.isStolen) {
-                FilterChip(selected = true, onClick = {}, label = { Text("Stolen") }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.error))
+                FilterChip(selected = true, onClick = {}, label = { Text("Stolen") }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.errorContainer))
             }
             if (ServiceController.isSearching) {
-                FilterChip(selected = true, onClick = {}, label = { Text("Searching") }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primary))
+                FilterChip(selected = true, onClick = {}, label = { Text("Searching") }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primaryContainer))
             }
-            if (!ServiceController.isStolen && !ServiceController.isSearching) {
+            if (ServiceController.isScreaming) {
+                FilterChip(selected = true, onClick = {}, label = { Text("Screaming") }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.error))
+            }
+            if (!ServiceController.isStolen && !ServiceController.isSearching && !ServiceController.isScreaming) {
                 FilterChip(selected = true, onClick = {}, label = { Text("Normal") })
             }
         }

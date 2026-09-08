@@ -88,6 +88,8 @@ class CommandProcessor @Inject constructor(
     private fun handleStopScream() {
         ServiceController.isScreaming = false
         screamManager.stopScream()
+        // Broadcast to close ScreamActivity if open
+        context.sendBroadcast(Intent("com.zex.tracker.STOP_SCREAM"))
     }
 
     private fun handleLock() {

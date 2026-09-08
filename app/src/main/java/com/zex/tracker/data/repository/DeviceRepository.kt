@@ -7,14 +7,14 @@ import com.zex.tracker.core.utils.BatteryUtils
 import com.zex.tracker.core.utils.NetworkUtils
 import com.zex.tracker.data.local.prefs.SecurePrefs
 import com.zex.tracker.data.remote.ApiResult
-import com.zex.tracker.data.remote.api.ZexExtendedApi
+import com.zex.tracker.data.remote.api.ZexApi
 import com.zex.tracker.data.remote.dto.*
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
 class DeviceRepository @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val api: ZexExtendedApi,
+    private val api: ZexApi,
     private val prefs: SecurePrefs
 ) : BaseRepository() {
 
