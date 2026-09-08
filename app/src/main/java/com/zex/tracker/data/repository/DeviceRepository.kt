@@ -28,9 +28,7 @@ class DeviceRepository @Inject constructor(
         api.registerDevice(request.copy(fcm_token = prefs.getString("fcm_token")))
     }
 
-    suspend fun sendLocation(location: Location): ApiResult<Unit> = safeApiCall {
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
-        val recordedAt = dateFormat.format(Date(location.time))
+    suspend fun sendLocation(location: Location): ApiResult<Unit> {
         val payload = LocationPayload(
             device_uid = prefs.getString(ZexConstants.KEY_DEVICE_UID) ?: "",
             latitude = location.latitude,
@@ -44,9 +42,26 @@ class DeviceRepository @Inject constructor(
             fcm_token = prefs.getString("fcm_token"),
             network_type = NetworkUtils.getNetworkType(context),
             address = null,
-            recorded_at = recordedAt
+            recorded_at = java.time.Instant.now().toString()
         )
-        api.sendLocation(payload)
+        val res = safeApiCall { api.sendLocation(payload) }
+        if (res is ApiResult.Error) {
+            try {
+                locationDao.insert(LocationEntity(
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    accuracy = location.accuracy,
+                    altitude = location.altitude,
+                    speed = location.speed,
+                    bearing = location.bearing,
+                    provider = location.provider ?: "gps",
+                    batteryLevel = payload.battery_level,
+                    networkType = payload.network_type,
+                    recordedAt = location.time
+                ))
+            } catch (e: Exception) {}
+        }
+        return res
     }
 
     suspend fun sendHeartbeat(): ApiResult<HeartbeatResponsePayload> {
@@ -68,8 +83,6 @@ class DeviceRepository @Inject constructor(
         try {
             val pending = locationDao.getPendingUploads(50)
             if (pending.isEmpty()) return
-            val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
-            dateFormat.timeZone = java.util.TimeZone.getTimeZone("UTC")
             val uids = mutableListOf<Int>()
             for (loc in pending) {
                 val payload = LocationPayload(
@@ -84,7 +97,7 @@ class DeviceRepository @Inject constructor(
                     battery_level = loc.batteryLevel,
                     network_type = loc.networkType,
                     address = null,
-                    recorded_at = dateFormat.format(Date(loc.recordedAt))
+                    recorded_at = java.time.Instant.ofEpochMilli(loc.recordedAt).toString()
                 )
                 val attempt = safeApiCall { api.sendLocation(payload) }
                 if (attempt is ApiResult.Success) uids.add(loc.id)

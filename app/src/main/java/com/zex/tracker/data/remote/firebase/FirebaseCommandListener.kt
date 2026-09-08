@@ -47,11 +47,14 @@ class FirebaseCommandListener @Inject constructor(
                         }
 
                         val cmd = com.zex.tracker.data.remote.dto.CommandDto(idStr.toInt(), type.name, params, "PENDING")
-                        // Queue command and remove on success inside CommandProcessor OR launch here
                         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-                            commandProcessor.process(cmd)
-                            // Clean up RTDB AFTER processing
-                            child.ref.removeValue()
+                            try {
+                                commandProcessor.process(cmd)
+                                // Clean up RTDB ONLY AFTER processing successfully
+                                child.ref.removeValue()
+                            } catch (e: Exception) {
+                                ZexLogger.e("Firebase", "Command processing failed, leaving in RTDB", e)
+                            }
                         }
                     } catch (e: Exception) {
                         ZexLogger.e("Firebase", "Failed parsing command", e)

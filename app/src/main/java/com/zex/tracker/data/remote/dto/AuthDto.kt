@@ -26,3 +26,8 @@ data class OwnerDto(
     val phone: String?,
     val pin_code: String?
 )
+
+
+data class DataWrapper<T>(
+    val data: T
+)

@@ -35,44 +35,50 @@ class CommandProcessor @Inject constructor(
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
 
-    fun process(command: CommandDto) {
+    suspend fun process(command: CommandDto) {
         ZexLogger.i("CommandProcessor", "Processing command: ${command.type}")
-        scope.launch {
-            try {
-                when (command.type) {
-                    "LOCATE" -> handleLocate()
-                    "CONTINUOUS_TRACK" -> {
-                        val interval = command.parameters?.get("interval")?.toIntOrNull() ?: 30
-                        searchModeManager.enterSearchMode("command_track", interval)
-                    }
-                    "STOP_TRACKING" -> searchModeManager.exitSearchMode("command_stop")
-                    "SCREAM" -> handleScream()
-                    "STOP_SCREAM" -> handleStopScream()
-                    "LOCK" -> handleLock()
-                    "ENABLE_NET" -> networkForcer.forceNetwork()
-                    "STOLEN_MODE" -> {
-                        prefs.putBoolean("isStolen", true)
-                        ServiceController.isStolen = true
-                        searchModeManager.enterSearchMode("stolen_mode", 30)
-                    }
-                    "FOUND_MODE" -> {
-                        prefs.putBoolean("isStolen", false)
-                        ServiceController.isTracking = false
-                        ServiceController.isStolen = false
-                        ServiceController.isScreaming = false
-                        ServiceController.isSearching = false
-                        searchModeManager.exitSearchMode("found_mode")
-                        handleStopScream()
-                        locationTracker.stopContinuous()
-                        context.sendBroadcast(Intent("ACTION_STOP_SCREAM_AND_FINISH"))
-                    }
-                    "STATUS" -> handleStatus()
-                    "PHOTO" -> ZexLogger.w("CommandProcessor", "PHOTO ignored by rule")
+        try {
+            when (command.type) {
+                "LOCATE" -> handleLocate()
+                "CONTINUOUS_TRACK" -> {
+                    val interval = command.parameters?.get("interval")?.toIntOrNull() ?: 30
+                    searchModeManager.enterSearchMode("command_track", interval)
                 }
-                deviceRepo.sendCommandResponse(command.id, "EXECUTED")
-            } catch (e: Exception) {
-                ZexLogger.e("CommandProcessor", "Failed executing ${command.type}", e)
-                deviceRepo.sendCommandResponse(command.id, "FAILED", mapOf("error" to (e.message ?: "Unknown")))
+                "STOP_TRACKING" -> searchModeManager.exitSearchMode("command_stop")
+                "SCREAM" -> handleScream()
+                "STOP_SCREAM" -> handleStopScream()
+                "LOCK" -> handleLock()
+                "ENABLE_NET" -> networkForcer.forceNetwork()
+                "STOLEN_MODE" -> {
+                    prefs.putBoolean("isStolen", true)
+                    ServiceController.isStolen = true
+                    searchModeManager.enterSearchMode("stolen_mode", 30)
+                }
+                "FOUND_MODE" -> {
+                    prefs.putBoolean("isStolen", false)
+                    ServiceController.isTracking = false
+                    ServiceController.isStolen = false
+                    ServiceController.isScreaming = false
+                    ServiceController.isSearching = false
+                    searchModeManager.exitSearchMode("found_mode")
+                    handleStopScream()
+                    locationTracker.stopContinuous()
+                    context.sendBroadcast(Intent("ACTION_STOP_SCREAM_AND_FINISH"))
+                }
+                "STATUS" -> handleStatus()
+                "PHOTO" -> ZexLogger.w("CommandProcessor", "PHOTO ignored by rule")
+            }
+            
+            // Wait for response to be sent before completing process
+            val res = deviceRepo.sendCommandResponse(command.id, "EXECUTED")
+            if (res is com.zex.tracker.data.remote.ApiResult.Error) {
+                throw Exception("Failed to send EXECUTED response to backend: ${res.message}")
+            }
+        } catch (e: Exception) {
+            ZexLogger.e("CommandProcessor", "Failed executing ${command.type}", e)
+            val res = deviceRepo.sendCommandResponse(command.id, "FAILED", mapOf("error" to (e.message ?: "Unknown")))
+            if (res is com.zex.tracker.data.remote.ApiResult.Error) {
+                throw Exception("Failed to send FAILED response to backend: ${res.message}", e)
             }
         }
     }

@@ -10,6 +10,9 @@ import com.zex.tracker.domain.model.CommandStatus
 import com.zex.tracker.domain.model.CommandType
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 
 @AndroidEntryPoint
 class ZexFcmService : FirebaseMessagingService() {
@@ -35,7 +38,7 @@ class ZexFcmService : FirebaseMessagingService() {
             val type = CommandType.valueOf(typeStr)
             
             val cmd = com.zex.tracker.data.remote.dto.CommandDto(cmdId, type.name, data, "PENDING")
-            commandProcessor.process(cmd)
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { commandProcessor.process(cmd) }
         } catch (e: Exception) {
             ZexLogger.e("FCM", "Failed to process FCM data", e)
         }
