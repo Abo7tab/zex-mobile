@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <exclude domain="sharedpref" path="encrypted_prefs.xml" />
+    <exclude domain="database" path="zex.db" />
+    <exclude domain="file" path="auth_tokens" />
+</full-backup-content>

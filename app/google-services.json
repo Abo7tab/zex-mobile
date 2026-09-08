@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "784804155722",
+    "firebase_url": "https://zex-12-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "zex-12",
+    "storage_bucket": "zex-12.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:784804155722:android:8f2fe1ca8f53dbea4771b3",
+        "android_client_info": {
+          "package_name": "com.zex.tracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCvLOJ9fDcDB1c8WvSpvldhprUw9OU6054"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
