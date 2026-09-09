@@ -38,6 +38,7 @@ class SetupViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     prefs.putString(ZexConstants.KEY_OWNER_TOKEN, res.data.token)
                     prefs.putInt(ZexConstants.KEY_OWNER_ID, res.data.owner.id)
+                    prefs.putString(ZexConstants.KEY_OWNER_PHONE, res.data.owner.phone ?: "")
                     ZexLogger.i("Setup", "Owner registered successfully")
                     _uiState.value = _uiState.value.copy(isLoading = false)
                     onSuccess()
@@ -56,6 +57,7 @@ class SetupViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     prefs.putString(ZexConstants.KEY_OWNER_TOKEN, res.data.token)
                     prefs.putInt(ZexConstants.KEY_OWNER_ID, res.data.owner.id)
+                    prefs.putString(ZexConstants.KEY_OWNER_PHONE, res.data.owner.phone ?: "")
                     ZexLogger.i("Setup", "Owner logged in successfully")
                     _uiState.value = _uiState.value.copy(isLoading = false)
                     onSuccess()
