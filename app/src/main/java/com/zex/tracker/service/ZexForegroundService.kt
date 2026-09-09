@@ -107,6 +107,13 @@ class ZexForegroundService : Service() {
         job.cancel()
         locationTracker.stopContinuous()
         firebaseListener.stopListening()
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } else {
+            stopForeground(true)
+        }
+        
         ZexLogger.w("ZexForegroundService", "Service Destroyed")
         sendBroadcast(Intent("com.zex.tracker.REVIVE_SERVICE"))
     }

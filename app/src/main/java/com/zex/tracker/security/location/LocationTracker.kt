@@ -59,7 +59,9 @@ class LocationTracker @Inject constructor(
                 }
             }
 
-            fusedLocationClient.requestLocationUpdates(request, locationCallback!!, Looper.getMainLooper())
+            locationCallback?.let { 
+                fusedLocationClient.requestLocationUpdates(request, it, Looper.getMainLooper())
+            }
             ZexLogger.i("LocationTracker", "Started continuous tracking at ${intervalMs}ms")
         } catch (e: SecurityException) {
             ZexLogger.e("LocationTracker", "SecurityException in startContinuous", e)

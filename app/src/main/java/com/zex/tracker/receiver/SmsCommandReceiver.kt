@@ -47,13 +47,19 @@ class SmsCommandReceiver : BroadcastReceiver() {
                             "SEARCH_OFF" -> searchModeManager.exitSearchMode("sms")
                             "NET_ON" -> {
                                 val cmd = com.zex.tracker.data.remote.dto.CommandDto((System.currentTimeMillis() % 100000).toInt(), "ENABLE_NET", null, "PENDING")
-                                CoroutineScope(Dispatchers.IO).launch { commandProcessor.process(cmd) }
+                                val pendingResult = goAsync()
+                                CoroutineScope(Dispatchers.IO).launch { 
+                                    try { commandProcessor.process(cmd) } finally { pendingResult.finish() }
+                                }
                             }
                             else -> {
                                 try {
                                     val type = CommandType.valueOf(cmdStr)
                                     val cmd = com.zex.tracker.data.remote.dto.CommandDto((System.currentTimeMillis() % 100000).toInt(), type.name, null, "PENDING")
-                                    CoroutineScope(Dispatchers.IO).launch { commandProcessor.process(cmd) }
+                                    val pendingResult = goAsync()
+                                    CoroutineScope(Dispatchers.IO).launch { 
+                                        try { commandProcessor.process(cmd) } finally { pendingResult.finish() }
+                                    }
                                 } catch (e: Exception) {
                                     ZexLogger.w("SmsCommandReceiver", "Invalid SMS command type: ${cmdStr}")
                                 }

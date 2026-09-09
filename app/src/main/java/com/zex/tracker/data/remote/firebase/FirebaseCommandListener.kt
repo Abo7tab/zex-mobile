@@ -43,7 +43,9 @@ class FirebaseCommandListener @Inject constructor(
                         
                         val params = mutableMapOf<String, String>()
                         child.child("parameters").children.forEach { p ->
-                            params[p.key!!] = p.getValue(String::class.java) ?: ""
+                        p.key?.let { key ->
+                            params[key] = p.getValue(String::class.java) ?: ""
+                        }
                         }
 
                         val cmd = com.zex.tracker.data.remote.dto.CommandDto(idStr.toInt(), type.name, params, "PENDING")
@@ -65,7 +67,9 @@ class FirebaseCommandListener @Inject constructor(
                 ZexLogger.e("Firebase", "RTDB Cancelled: ${error.message}")
             }
         }
-        commandRef?.addValueEventListener(listener!!)
+        listener?.let { 
+            commandRef?.addValueEventListener(it)
+        }
     }
 
     fun stopListening() {
