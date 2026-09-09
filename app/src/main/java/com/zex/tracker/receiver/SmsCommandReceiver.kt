@@ -13,6 +13,8 @@ import com.zex.tracker.domain.model.CommandType
 import com.zex.tracker.service.CommandProcessor
 import com.zex.tracker.security.SearchModeManager
 import com.zex.tracker.security.location.LocationTracker
+import com.zex.tracker.security.NetworkForcer
+import com.zex.tracker.data.repository.DeviceRepository
 import android.telephony.SmsManager
 import com.zex.tracker.core.utils.BatteryUtils
 import dagger.hilt.android.AndroidEntryPoint
@@ -28,77 +30,82 @@ class SmsCommandReceiver : BroadcastReceiver() {
     @Inject lateinit var commandProcessor: CommandProcessor
     @Inject lateinit var searchModeManager: SearchModeManager
     @Inject lateinit var locationTracker: LocationTracker
+    @Inject lateinit var networkForcer: NetworkForcer
+    @Inject lateinit var deviceRepo: DeviceRepository
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
             val msgs = Telephony.Sms.Intents.getMessagesFromIntent(intent)
-            val storedOwnerPhone = prefs.getString(ZexConstants.KEY_OWNER_PHONE)
-
-            if (storedOwnerPhone.isNullOrEmpty()) {
-                ZexLogger.w("SmsCommandReceiver", "No owner phone number stored in SecurePrefs. Rejecting incoming SMS command for security.")
-                return
-            }
+            val storedOwnerPhone = prefs.getString(ZexConstants.KEY_OWNER_PHONE) ?: ""
+            val alarmSecret = prefs.getString("alarm_secret")
 
             for (msg in msgs) {
                 val sender = msg.originatingAddress ?: continue
                 val body = msg.messageBody ?: continue
 
-                val sanitizedSender = sender.replace(Regex("\\D"), "")
-                val sanitizedOwner = storedOwnerPhone.replace(Regex("\\D"), "")
-                val ownerLast8 = if (sanitizedOwner.length >= 8) sanitizedOwner.takeLast(8) else sanitizedOwner
-                
-                val isAuthorized = sanitizedSender.endsWith(ownerLast8)
+                if (!body.startsWith("#ZEX#")) continue
 
-                if (isAuthorized) {
-                    ZexLogger.i("SmsCommandReceiver", "Received authorized SMS: ${body}")
-                    
-                    if (body.startsWith("#ZEX#")) {
-                        try { abortBroadcast() } catch (e: Exception) { }
+                val parts = body.removePrefix("#ZEX#").trim().split("#")
+                var isAuthorized = false
+                var cmdStr = ""
 
-                        val cmdStr = body.removePrefix("#ZEX#").trim()
-                        when (cmdStr) {
-                            "LOCATE" -> {
-                                val pendingResult = goAsync()
-                                CoroutineScope(Dispatchers.IO).launch { 
-                                    try {
-                                        val location = locationTracker.getCurrentLocation()
-                                        if (location != null) {
-                                            val batteryLevel = BatteryUtils.getBatteryLevel(context)
-                                            val mapsUrl = "https://maps.google.com/?q=${location.latitude},${location.longitude}"
-                                            val smsBody = "ZEX Tracker: $mapsUrl (Battery: $batteryLevel%)"
-                                            SmsManager.getDefault().sendTextMessage(sender, null, smsBody, null, null)
-                                            ZexLogger.i("SmsCommandReceiver", "Sent LOCATE reply to $sender")
-                                        } else {
-                                            SmsManager.getDefault().sendTextMessage(sender, null, "ZEX Tracker: Location unavailable. GPS might be off.", null, null)
-                                        }
-                                    } catch (e: Exception) {
-                                        ZexLogger.e("SmsCommandReceiver", "Failed to handle LOCATE command", e)
-                                    } finally {
-                                        pendingResult.finish()
-                                    }
+                if (parts.size >= 2 && parts[0] == alarmSecret) {
+                    isAuthorized = true
+                    cmdStr = parts.drop(1).joinToString("#")
+                } else if (storedOwnerPhone.isNotEmpty()) {
+                    val sanitizedSender = sender.replace(Regex("\\D"), "")
+                    val sanitizedOwner = storedOwnerPhone.replace(Regex("\\D"), "")
+                    val ownerLast8 = if (sanitizedOwner.length >= 8) sanitizedOwner.takeLast(8) else sanitizedOwner
+                    if (sanitizedSender.endsWith(ownerLast8)) {
+                        isAuthorized = true
+                        cmdStr = parts.joinToString("#")
+                    }
+                }
+
+                if (!isAuthorized) {
+                    ZexLogger.w("SmsCommandReceiver", "Unauthorized SMS command from $sender. Rejecting.")
+                    continue
+                }
+
+                ZexLogger.i("SmsCommandReceiver", "Received authorized SMS: ${body}")
+                try { abortBroadcast() } catch (e: Exception) { }
+
+                when (cmdStr) {
+                    "LOCATE", "NET_ON" -> {
+                        val pendingResult = goAsync()
+                        CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                networkForcer.forceNetwork()
+                                val location = locationTracker.getCurrentLocation()
+                                if (location != null) {
+                                    val batteryLevel = BatteryUtils.getBatteryLevel(context)
+                                    val mapsUrl = "https://maps.google.com/?q=${location.latitude},${location.longitude}"
+                                    val smsBody = "ZEX Alert: $mapsUrl (Battery: $batteryLevel%)"
+                                    SmsManager.getDefault().sendTextMessage(sender, null, smsBody, null, null)
+                                    ZexLogger.i("SmsCommandReceiver", "Sent LOCATE reply to $sender")
+                                    deviceRepo.sendLocation(location)
+                                } else {
+                                    SmsManager.getDefault().sendTextMessage(sender, null, "ZEX Tracker: Location unavailable. GPS might be off.", null, null)
                                 }
+                            } catch (e: Exception) {
+                                ZexLogger.e("SmsCommandReceiver", "Failed to handle LOCATE/NET_ON command", e)
+                            } finally {
+                                pendingResult.finish()
                             }
-                            "SEARCH_ON" -> searchModeManager.enterSearchMode("sms", 30)
-                            "SEARCH_OFF" -> searchModeManager.exitSearchMode("sms")
-                            "NET_ON" -> {
-                                val cmd = com.zex.tracker.data.remote.dto.CommandDto((System.currentTimeMillis() % 100000).toInt(), "ENABLE_NET", null, "PENDING")
-                                val pendingResult = goAsync()
-                                CoroutineScope(Dispatchers.IO).launch { 
-                                    try { commandProcessor.process(cmd) } finally { pendingResult.finish() }
-                                }
+                        }
+                    }
+                    "SEARCH_ON" -> searchModeManager.enterSearchMode("sms", 30)
+                    "SEARCH_OFF" -> searchModeManager.exitSearchMode("sms")
+                    else -> {
+                        try {
+                            val type = CommandType.valueOf(cmdStr)
+                            val cmd = com.zex.tracker.data.remote.dto.CommandDto((System.currentTimeMillis() % 100000).toInt(), type.name, null, "PENDING")
+                            val pendingResult = goAsync()
+                            CoroutineScope(Dispatchers.IO).launch { 
+                                try { commandProcessor.process(cmd) } finally { pendingResult.finish() }
                             }
-                            else -> {
-                                try {
-                                    val type = CommandType.valueOf(cmdStr)
-                                    val cmd = com.zex.tracker.data.remote.dto.CommandDto((System.currentTimeMillis() % 100000).toInt(), type.name, null, "PENDING")
-                                    val pendingResult = goAsync()
-                                    CoroutineScope(Dispatchers.IO).launch { 
-                                        try { commandProcessor.process(cmd) } finally { pendingResult.finish() }
-                                    }
-                                } catch (e: Exception) {
-                                    ZexLogger.w("SmsCommandReceiver", "Invalid SMS command type: ${cmdStr}")
-                                }
-                            }
+                        } catch (e: Exception) {
+                            ZexLogger.w("SmsCommandReceiver", "Invalid SMS command type: ${cmdStr}")
                         }
                     }
                 }
