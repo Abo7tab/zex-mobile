@@ -26,12 +26,18 @@ class HourlyCheckWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         ZexLogger.i("HourlyCheckWorker", "Running hourly check")
         networkForcer.forceNetwork()
-        val isSearching = searchModeManager.checkOwnerSearching()?.owner_is_searching ?: false
-
-        if (!isSearching) {
-            ZexLogger.i("HourlyCheckWorker", "Not searching. Taking snapshot.")
+        
+        try {
+            deviceRepo.flushPendingLocations()
+            
             val loc = locationTracker.getCurrentLocation()
-            if (loc != null) deviceRepo.sendLocation(loc)
+            if (loc != null) {
+                deviceRepo.sendLocation(loc)
+            }
+            
+            deviceRepo.sendHeartbeat()
+        } catch (e: Exception) {
+            ZexLogger.e("HourlyCheckWorker", "Failed hourly sync", e)
         }
         
         // Re-schedule exact alarm

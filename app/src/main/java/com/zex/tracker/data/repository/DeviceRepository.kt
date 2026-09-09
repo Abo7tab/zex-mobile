@@ -79,7 +79,7 @@ class DeviceRepository @Inject constructor(
         return res
     }
 
-    private suspend fun flushPendingLocations() {
+    suspend fun flushPendingLocations() {
         try {
             val pending = locationDao.getPendingUploads(50)
             if (pending.isEmpty()) return

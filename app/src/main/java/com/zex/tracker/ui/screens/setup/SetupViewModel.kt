@@ -74,7 +74,11 @@ class SetupViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             
             val safeName = if (deviceName.isNotBlank()) deviceName else Build.MODEL ?: "Unknown Device"
-            val finalUid = "zex-uid-${UUID.randomUUID()}"
+            var finalUid = prefs.getString(ZexConstants.KEY_DEVICE_UID)
+            if (finalUid.isNullOrEmpty()) {
+                finalUid = "zex-uid-${UUID.randomUUID()}"
+                prefs.putString(ZexConstants.KEY_DEVICE_UID, finalUid)
+            }
             
             val req = DeviceRegisterRequest(
                 device_uid = finalUid,
