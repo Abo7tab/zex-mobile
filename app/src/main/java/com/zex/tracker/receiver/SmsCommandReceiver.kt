@@ -12,6 +12,9 @@ import com.zex.tracker.domain.model.CommandStatus
 import com.zex.tracker.domain.model.CommandType
 import com.zex.tracker.service.CommandProcessor
 import com.zex.tracker.security.SearchModeManager
+import com.zex.tracker.security.location.LocationTracker
+import android.telephony.SmsManager
+import com.zex.tracker.core.utils.BatteryUtils
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -24,6 +27,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
     @Inject lateinit var prefs: SecurePrefs
     @Inject lateinit var commandProcessor: CommandProcessor
     @Inject lateinit var searchModeManager: SearchModeManager
+    @Inject lateinit var locationTracker: LocationTracker
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
@@ -43,6 +47,27 @@ class SmsCommandReceiver : BroadcastReceiver() {
 
                         val cmdStr = body.removePrefix("#ZEX#").trim()
                         when (cmdStr) {
+                            "LOCATE" -> {
+                                val pendingResult = goAsync()
+                                CoroutineScope(Dispatchers.IO).launch { 
+                                    try {
+                                        val location = locationTracker.getCurrentLocation()
+                                        if (location != null) {
+                                            val batteryLevel = BatteryUtils.getBatteryLevel(context)
+                                            val mapsUrl = "https://maps.google.com/?q=${location.latitude},${location.longitude}"
+                                            val smsBody = "ZEX Tracker: $mapsUrl (Battery: $batteryLevel%)"
+                                            SmsManager.getDefault().sendTextMessage(sender, null, smsBody, null, null)
+                                            ZexLogger.i("SmsCommandReceiver", "Sent LOCATE reply to $sender")
+                                        } else {
+                                            SmsManager.getDefault().sendTextMessage(sender, null, "ZEX Tracker: Location unavailable. GPS might be off.", null, null)
+                                        }
+                                    } catch (e: Exception) {
+                                        ZexLogger.e("SmsCommandReceiver", "Failed to handle LOCATE command", e)
+                                    } finally {
+                                        pendingResult.finish()
+                                    }
+                                }
+                            }
                             "SEARCH_ON" -> searchModeManager.enterSearchMode("sms", 30)
                             "SEARCH_OFF" -> searchModeManager.exitSearchMode("sms")
                             "NET_ON" -> {
