@@ -33,4 +33,20 @@ class NetworkForcer @Inject constructor(@ApplicationContext private val context:
             ZexLogger.e("NetworkForcer", "Failed to force network", e)
         }
     }
+
+    fun releaseNetwork() {
+        try {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+                if (wifiManager?.isWifiEnabled == true) {
+                    wifiManager.isWifiEnabled = false
+                    ZexLogger.i("NetworkForcer", "Disabled WiFi via legacy API")
+                }
+            } else {
+                ZexLogger.i("NetworkForcer", "Best-effort network release on Android 10+")
+            }
+        } catch (e: Exception) {
+            ZexLogger.e("NetworkForcer", "Failed to release network", e)
+        }
+    }
 }

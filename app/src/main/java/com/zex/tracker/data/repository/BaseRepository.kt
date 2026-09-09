@@ -31,7 +31,7 @@ abstract class BaseRepository {
     private fun parseError(code: Int, errorBody: String?): String {
         return when (code) {
             401 -> "Unauthorized. Please login again."
-            422 -> "Validation failed. Please check your inputs."
+            422 -> "Validation failed: $errorBody"
             500 -> "Server error. Please try again later."
             else -> "Error: $code. $errorBody"
         }

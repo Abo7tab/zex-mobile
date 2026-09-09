@@ -73,17 +73,14 @@ class SetupViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             
-            var uid = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
-            if (uid.isNullOrEmpty()) {
-                uid = UUID.randomUUID().toString()
-            }
-            val finalUid = "zex-uid-$uid"
+            val safeName = if (deviceName.isNotBlank()) deviceName else Build.MODEL ?: "Unknown Device"
+            val finalUid = "zex-uid-${UUID.randomUUID()}"
             
             val req = DeviceRegisterRequest(
                 device_uid = finalUid,
-                device_name = deviceName,
-                device_model = Build.MODEL,
-                android_version = Build.VERSION.RELEASE,
+                device_name = safeName,
+                device_model = Build.MODEL?.toString() ?: "Unknown",
+                android_version = Build.VERSION.RELEASE?.toString() ?: "Unknown",
                 sim_iccid = null // handled later
             )
 
