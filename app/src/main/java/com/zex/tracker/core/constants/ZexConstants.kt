@@ -16,6 +16,9 @@ object ZexConstants {
     const val KEY_IS_SETUP_COMPLETE = "is_setup_complete"
     const val KEY_LANGUAGE = "language"
     
+    // Actions
+    const val ACTION_STOP_SCREAM = "com.zex.tracker.ACTION_STOP_SCREAM_AND_FINISH"
+    
     // Headers
     const val HEADER_AUTHORIZATION = "Authorization"
     const val HEADER_DEVICE_TOKEN = "X-Device-Token"

@@ -63,7 +63,7 @@ class CommandProcessor @Inject constructor(
                     searchModeManager.exitSearchMode("found_mode")
                     handleStopScream()
                     locationTracker.stopContinuous()
-                    context.sendBroadcast(Intent("ACTION_STOP_SCREAM_AND_FINISH"))
+                    context.sendBroadcast(Intent(com.zex.tracker.core.constants.ZexConstants.ACTION_STOP_SCREAM))
                 }
                 "STATUS" -> handleStatus()
                 "PHOTO" -> ZexLogger.w("CommandProcessor", "PHOTO ignored by rule")
@@ -99,7 +99,7 @@ class CommandProcessor @Inject constructor(
     private fun handleStopScream() {
         ServiceController.isScreaming = false
         screamManager.stopScream()
-        context.sendBroadcast(Intent("com.zex.tracker.STOP_SCREAM"))
+        context.sendBroadcast(Intent(com.zex.tracker.core.constants.ZexConstants.ACTION_STOP_SCREAM))
     }
 
     private fun handleLock() {

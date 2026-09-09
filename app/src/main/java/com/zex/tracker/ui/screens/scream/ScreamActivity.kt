@@ -35,7 +35,7 @@ class ScreamActivity : ComponentActivity() {
 
     private val stopReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == "ACTION_STOP_SCREAM_AND_FINISH") {
+            if (intent?.action == com.zex.tracker.core.constants.ZexConstants.ACTION_STOP_SCREAM) {
                 screamManager.stopScream()
                 ServiceController.isScreaming = false
                 finish()
@@ -47,7 +47,7 @@ class ScreamActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         screamManager.startScream()
         
-        val filter = IntentFilter("ACTION_STOP_SCREAM_AND_FINISH")
+        val filter = IntentFilter(com.zex.tracker.core.constants.ZexConstants.ACTION_STOP_SCREAM)
         androidx.core.content.ContextCompat.registerReceiver(this, stopReceiver, filter, androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
 
         setContent {
