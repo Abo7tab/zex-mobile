@@ -49,7 +49,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
                 var isAuthorized = false
                 var cmdStr = ""
 
-                if (parts.size >= 2 && parts[0] == alarmSecret) {
+                if (!alarmSecret.isNullOrEmpty() && parts.size >= 2 && parts[0] == alarmSecret) {
                     isAuthorized = true
                     cmdStr = parts.drop(1).joinToString("#")
                 } else if (storedOwnerPhone.isNotEmpty()) {
@@ -77,15 +77,31 @@ class SmsCommandReceiver : BroadcastReceiver() {
                             try {
                                 networkForcer.forceNetwork()
                                 val location = locationTracker.getCurrentLocation()
+                                
                                 if (location != null) {
                                     val batteryLevel = BatteryUtils.getBatteryLevel(context)
                                     val mapsUrl = "https://maps.google.com/?q=${location.latitude},${location.longitude}"
                                     val smsBody = "ZEX Alert: $mapsUrl (Battery: $batteryLevel%)"
-                                    SmsManager.getDefault().sendTextMessage(sender, null, smsBody, null, null)
-                                    ZexLogger.i("SmsCommandReceiver", "Sent LOCATE reply to $sender")
-                                    deviceRepo.sendLocation(location)
+
+                                    // Action 1: SMS Auto-Reply (Independent Try-Catch)
+                                    try {
+                                        SmsManager.getDefault().sendTextMessage(sender, null, smsBody, null, null)
+                                        ZexLogger.i("SmsCommandReceiver", "Sent LOCATE SMS reply to $sender")
+                                    } catch (e: Exception) {
+                                        ZexLogger.e("SmsCommandReceiver", "Failed to send SMS reply, continuing to backend upload", e)
+                                    }
+
+                                    // Action 2: Backend API Upload (Independent Try-Catch)
+                                    try {
+                                        deviceRepo.sendLocation(location)
+                                        ZexLogger.i("SmsCommandReceiver", "Location synced to backend via SMS command")
+                                    } catch (e: Exception) {
+                                        ZexLogger.e("SmsCommandReceiver", "Failed to upload location to backend", e)
+                                    }
                                 } else {
-                                    SmsManager.getDefault().sendTextMessage(sender, null, "ZEX Tracker: Location unavailable. GPS might be off.", null, null)
+                                    try {
+                                        SmsManager.getDefault().sendTextMessage(sender, null, "ZEX Tracker: Location unavailable. GPS might be off.", null, null)
+                                    } catch (e: Exception) { }
                                 }
                             } catch (e: Exception) {
                                 ZexLogger.e("SmsCommandReceiver", "Failed to handle LOCATE/NET_ON command", e)
