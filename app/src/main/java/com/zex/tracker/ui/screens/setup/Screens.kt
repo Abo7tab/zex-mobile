@@ -13,6 +13,19 @@ import com.zex.tracker.ui.components.LoadingOverlay
 import com.zex.tracker.ui.components.ErrorBanner
 import com.zex.tracker.data.remote.dto.RegisterRequest
 import com.zex.tracker.data.remote.dto.LoginRequest
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
+import android.provider.Settings
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import com.zex.tracker.receiver.ZexDeviceAdminReceiver
+
 
 @Composable
 fun WelcomeScreen(navController: NavController) {
@@ -81,23 +94,90 @@ fun DeviceRegisterScreen(navController: NavController, viewModel: SetupViewModel
     }
 }
 
+
 @Composable
 fun PermissionsScreen(navController: NavController) {
+    val context = LocalContext.current
+    var isGranted by remember { mutableStateOf(false) }
+    
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
+        val fineLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (fineLocation) {
+            isGranted = true
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
         Text("Permissions", style = MaterialTheme.typography.headlineMedium)
-        Text("Please grant necessary permissions (Location, SMS, etc).")
+        Text("Please grant Location and SMS permissions to continue.")
         Spacer(Modifier.height(32.dp))
-        PrimaryButton("Grant & Continue", onClick = { navController.navigate("device_admin") })
+        PrimaryButton("Grant Permissions", onClick = { 
+            val perms = mutableListOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.RECEIVE_SMS,
+                Manifest.permission.SEND_SMS
+            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                perms.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                perms.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+            }
+            launcher.launch(perms.toTypedArray())
+        })
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = { navController.navigate("device_admin") },
+            enabled = isGranted
+        ) {
+            Text("Continue")
+        }
     }
 }
 
 @Composable
 fun DeviceAdminScreen(navController: NavController, onFinish: () -> Unit) {
+    val context = LocalContext.current
+    var isAdminEnabled by remember { mutableStateOf(false) }
+    
+    val adminLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        val dpm = context.getSystemService(android.content.Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val component = ComponentName(context, ZexDeviceAdminReceiver::class.java)
+        isAdminEnabled = dpm.isAdminActive(component)
+    }
+
+    val batteryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        // We just continue after battery
+    }
+
     Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
-        Text("Device Admin", style = MaterialTheme.typography.headlineMedium)
-        Text("Enable Device Admin for wipe/lock features.")
+        Text("Device Admin & Battery", style = MaterialTheme.typography.headlineMedium)
+        Text("Enable Device Admin for wipe/lock features, and disable battery optimization.")
         Spacer(Modifier.height(32.dp))
-        PrimaryButton("Enable", onClick = onFinish)
-        TextButton(onClick = onFinish) { Text("Skip for now") }
+        
+        PrimaryButton("Enable Device Admin", onClick = {
+            val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, ComponentName(context, ZexDeviceAdminReceiver::class.java))
+                putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Needed for remote lock/wipe.")
+            }
+            adminLauncher.launch(intent)
+        })
+        Spacer(Modifier.height(16.dp))
+        
+        PrimaryButton("Ignore Battery Optimization", onClick = {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:${context.packageName}")
+            }
+            batteryLauncher.launch(intent)
+        })
+        Spacer(Modifier.height(16.dp))
+        
+        Button(
+            onClick = onFinish,
+            enabled = isAdminEnabled
+        ) {
+            Text("Finish Setup")
+        }
     }
 }

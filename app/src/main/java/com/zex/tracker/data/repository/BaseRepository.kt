@@ -17,6 +17,7 @@ abstract class BaseRepository {
                 }
             } else {
                 val errorBody = response.errorBody()?.string()
+                android.util.Log.e("ZEX_API", "Error Body: " + errorBody)
                 ZexLogger.w("BaseRepository", "API Error: ${response.code()} - $errorBody")
                 val msg = parseError(response.code(), errorBody)
                 ApiResult.Error(msg, response.code())
