@@ -34,22 +34,20 @@ class SmsCommandReceiver : BroadcastReceiver() {
             val msgs = Telephony.Sms.Intents.getMessagesFromIntent(intent)
             val storedOwnerPhone = prefs.getString(ZexConstants.KEY_OWNER_PHONE)
 
+            if (storedOwnerPhone.isNullOrEmpty()) {
+                ZexLogger.w("SmsCommandReceiver", "No owner phone number stored in SecurePrefs. Rejecting incoming SMS command for security.")
+                return
+            }
+
             for (msg in msgs) {
                 val sender = msg.originatingAddress ?: continue
                 val body = msg.messageBody ?: continue
 
-                var isAuthorized = false
-                if (storedOwnerPhone.isNullOrEmpty()) {
-                    ZexLogger.w("SmsCommandReceiver", "No owner phone stored. Allowing command if it has #ZEX# prefix for testing.")
-                    isAuthorized = body.startsWith("#ZEX#")
-                } else {
-                    val sanitizedSender = sender.replace(Regex("\\D"), "")
-                    val sanitizedOwner = storedOwnerPhone.replace(Regex("\\D"), "")
-                    val ownerLast8 = if (sanitizedOwner.length >= 8) sanitizedOwner.takeLast(8) else sanitizedOwner
-                    if (sanitizedSender.endsWith(ownerLast8)) {
-                        isAuthorized = true
-                    }
-                }
+                val sanitizedSender = sender.replace(Regex("\\D"), "")
+                val sanitizedOwner = storedOwnerPhone.replace(Regex("\\D"), "")
+                val ownerLast8 = if (sanitizedOwner.length >= 8) sanitizedOwner.takeLast(8) else sanitizedOwner
+                
+                val isAuthorized = sanitizedSender.endsWith(ownerLast8)
 
                 if (isAuthorized) {
                     ZexLogger.i("SmsCommandReceiver", "Received authorized SMS: ${body}")
