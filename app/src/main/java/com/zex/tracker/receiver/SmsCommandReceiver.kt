@@ -41,11 +41,13 @@ class SmsCommandReceiver : BroadcastReceiver() {
 
             for (msg in msgs) {
                 val sender = msg.originatingAddress ?: continue
-                val body = msg.messageBody ?: continue
+                val rawBody = msg.messageBody?.trim() ?: continue
+                val upper = rawBody.uppercase()
+                if (!upper.startsWith("#ZEX#") && !upper.startsWith("ZEX#")) continue
 
-                if (!body.startsWith("#ZEX#")) continue
-
-                val parts = body.removePrefix("#ZEX#").trim().split("#")
+                // Cleanly strip prefix whether it starts with # or not
+                val cleanBody = upper.removePrefix("#ZEX#").removePrefix("ZEX#").trim().removeSuffix("#")
+                val parts = cleanBody.split("#").map { it.trim() }
                 var isAuthorized = false
                 var cmdStr = ""
 
@@ -67,7 +69,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
                     continue
                 }
 
-                ZexLogger.i("SmsCommandReceiver", "Received authorized SMS: ${body}")
+                ZexLogger.i("SmsCommandReceiver", "Received authorized SMS: ${rawBody}")
                 try { abortBroadcast() } catch (e: Exception) { }
 
                 when (cmdStr) {
