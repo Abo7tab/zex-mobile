@@ -32,6 +32,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
     @Inject lateinit var locationTracker: LocationTracker
     @Inject lateinit var networkForcer: NetworkForcer
     @Inject lateinit var deviceRepo: DeviceRepository
+    @Inject lateinit var screamManager: com.zex.tracker.security.ScreamManager
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
@@ -51,9 +52,9 @@ class SmsCommandReceiver : BroadcastReceiver() {
                 var isAuthorized = false
                 var cmdStr = ""
 
-                if (!alarmSecret.isNullOrEmpty() && parts.size >= 2 && parts[0] == alarmSecret) {
+                if (!alarmSecret.isNullOrEmpty() && parts.isNotEmpty() && parts[0] == alarmSecret) {
                     isAuthorized = true
-                    cmdStr = parts.drop(1).joinToString("#")
+                    cmdStr = if (parts.size >= 2) parts.drop(1).joinToString("#") else "SOS"
                 } else if (storedOwnerPhone.isNotEmpty()) {
                     val sanitizedSender = sender.replace(Regex("\\D"), "")
                     val sanitizedOwner = storedOwnerPhone.replace(Regex("\\D"), "")
@@ -61,6 +62,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
                     if (sanitizedSender.endsWith(ownerLast8)) {
                         isAuthorized = true
                         cmdStr = parts.joinToString("#")
+                        if (cmdStr.isEmpty()) cmdStr = "SOS"
                     }
                 }
 
@@ -73,6 +75,46 @@ class SmsCommandReceiver : BroadcastReceiver() {
                 try { abortBroadcast() } catch (e: Exception) { }
 
                 when (cmdStr) {
+                    "SOS", "PANIC", "HELP" -> {
+                        val pendingResult = goAsync()
+                        CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                ZexLogger.i("SmsCommandReceiver", "Triggering SOS Emergency Routine")
+                                screamManager.startScream()
+                                networkForcer.forceNetwork()
+                                com.zex.tracker.service.ServiceController.isStolen = true
+                                com.zex.tracker.service.ServiceController.isSearching = true
+                                com.zex.tracker.service.ServiceController.isScreaming = true
+                                prefs.putBoolean("isStolen", true)
+                                
+                                val location = locationTracker.getCurrentLocation()
+                                if (location != null) {
+                                    val batteryLevel = BatteryUtils.getBatteryLevel(context)
+                                    val mapsUrl = "https://maps.google.com/?q=${location.latitude},${location.longitude}"
+                                    val smsBody = "SOS ZEX Alert: $mapsUrl (Battery: $batteryLevel%)"
+                                    
+                                    try {
+                                        SmsManager.getDefault().sendTextMessage(sender, null, smsBody, null, null)
+                                    } catch (e: Exception) {
+                                        ZexLogger.e("SmsCommandReceiver", "Failed to send SOS SMS", e)
+                                    }
+                                    
+                                    try {
+                                        deviceRepo.sendLocation(location)
+                                        // Upload status is_stolen: true, is_screaming: true to Laravel using heartbeat
+                                        val cmdStrSos = com.zex.tracker.data.remote.dto.CommandDto((System.currentTimeMillis() % 100000).toInt(), "STOLEN_MODE", null, "PENDING")
+                                        commandProcessor.process(cmdStrSos)
+                                    } catch (e: Exception) {
+                                        ZexLogger.e("SmsCommandReceiver", "Failed to sync SOS state", e)
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                ZexLogger.e("SmsCommandReceiver", "Failed SOS routine", e)
+                            } finally {
+                                pendingResult.finish()
+                            }
+                        }
+                    }
                     "LOCATE", "NET_ON" -> {
                         val pendingResult = goAsync()
                         CoroutineScope(Dispatchers.IO).launch {
