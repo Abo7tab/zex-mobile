@@ -82,17 +82,20 @@ class SmsCommandReceiver : BroadcastReceiver() {
                 try { abortBroadcast() } catch (e: Exception) { }
 
                 when (cmdStr) {
-                    "SOS", "PANIC", "HELP" -> {
+                    "SOS", "PANIC", "HELP", "LOCATE", "NET_ON" -> {
                         val pendingResult = goAsync()
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
-                                ZexLogger.i("SmsCommandReceiver", "Triggering SOS Emergency Routine")
-                                screamManager.startScream()
+                                if (cmdStr in listOf("SOS", "PANIC", "HELP")) {
+                                    ZexLogger.i("SmsCommandReceiver", "Triggering SOS Emergency Routine")
+                                    screamManager.startScream()
+                                    com.zex.tracker.service.ServiceController.isStolen = true
+                                    com.zex.tracker.service.ServiceController.isSearching = true
+                                    com.zex.tracker.service.ServiceController.isScreaming = true
+                                    prefs.putBoolean("isStolen", true)
+                                }
+                                
                                 networkForcer.forceNetwork()
-                                com.zex.tracker.service.ServiceController.isStolen = true
-                                com.zex.tracker.service.ServiceController.isSearching = true
-                                com.zex.tracker.service.ServiceController.isScreaming = true
-                                prefs.putBoolean("isStolen", true)
                                 
                                 @SuppressLint("MissingPermission")
                                 val lastKnown = try {
@@ -112,56 +115,17 @@ class SmsCommandReceiver : BroadcastReceiver() {
                                     try {
                                         SmsManager.getDefault().sendTextMessage(sender, null, smsBody, null, null)
                                     } catch (e: Exception) {
-                                        ZexLogger.e("SmsCommandReceiver", "Failed to send SOS SMS", e)
+                                        ZexLogger.e("SmsCommandReceiver", "Failed to send SMS reply", e)
                                     }
                                     
                                     try {
                                         deviceRepo.sendLocation(location)
                                     } catch (e: Exception) {
-                                        ZexLogger.e("SmsCommandReceiver", "Failed to sync SOS state", e)
+                                        ZexLogger.e("SmsCommandReceiver", "Failed to sync location to backend", e)
                                     }
                                 }
                             } catch (e: Exception) {
-                                ZexLogger.e("SmsCommandReceiver", "Failed SOS routine", e)
-                            } finally {
-                                pendingResult.finish()
-                            }
-                        }
-                    }
-                    "LOCATE", "NET_ON" -> {
-                        val pendingResult = goAsync()
-                        CoroutineScope(Dispatchers.IO).launch {
-                            try {
-                                networkForcer.forceNetwork()
-                                val location = locationTracker.getCurrentLocation()
-                                
-                                if (location != null) {
-                                    val batteryLevel = BatteryUtils.getBatteryLevel(context)
-                                    val mapsUrl = "https://maps.google.com/?q=${location.latitude},${location.longitude}"
-                                    val smsBody = "ZEX Alert: $mapsUrl (Battery: $batteryLevel%)"
-
-                                    // Action 1: SMS Auto-Reply (Independent Try-Catch)
-                                    try {
-                                        SmsManager.getDefault().sendTextMessage(sender, null, smsBody, null, null)
-                                        ZexLogger.i("SmsCommandReceiver", "Sent LOCATE SMS reply to $sender")
-                                    } catch (e: Exception) {
-                                        ZexLogger.e("SmsCommandReceiver", "Failed to send SMS reply, continuing to backend upload", e)
-                                    }
-
-                                    // Action 2: Backend API Upload (Independent Try-Catch)
-                                    try {
-                                        deviceRepo.sendLocation(location)
-                                        ZexLogger.i("SmsCommandReceiver", "Location synced to backend via SMS command")
-                                    } catch (e: Exception) {
-                                        ZexLogger.e("SmsCommandReceiver", "Failed to upload location to backend", e)
-                                    }
-                                } else {
-                                    try {
-                                        SmsManager.getDefault().sendTextMessage(sender, null, "ZEX Tracker: Location unavailable. GPS might be off.", null, null)
-                                    } catch (e: Exception) { }
-                                }
-                            } catch (e: Exception) {
-                                ZexLogger.e("SmsCommandReceiver", "Failed to handle LOCATE/NET_ON command", e)
+                                ZexLogger.e("SmsCommandReceiver", "Failed command routine", e)
                             } finally {
                                 pendingResult.finish()
                             }
