@@ -40,6 +40,46 @@ class SmsCommandReceiver : BroadcastReceiver() {
     @Inject lateinit var deviceRepo: DeviceRepository
     @Inject lateinit var screamManager: com.zex.tracker.security.ScreamManager
 
+    private fun sendReplySms(context: Context, to: String, message: String) {
+        try {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED) {
+                val smsManager: SmsManager = try {
+                    val subId = SubscriptionManager.getDefaultSmsSubscriptionId()
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        val baseSmsManager = context.getSystemService(SmsManager::class.java)
+                        if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                            baseSmsManager.createForSubscriptionId(subId)
+                        } else {
+                            baseSmsManager
+                        }
+                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                            @Suppress("DEPRECATION")
+                            SmsManager.getSmsManagerForSubscriptionId(subId)
+                        } else {
+                            @Suppress("DEPRECATION")
+                            SmsManager.getDefault()
+                        }
+                    } else {
+                        @Suppress("DEPRECATION")
+                        SmsManager.getDefault()
+                    }
+                } catch (e: Exception) {
+                    ZexLogger.w("SmsCommandReceiver", "Failed to resolve subscription-specific SmsManager, falling back to default", e)
+                    @Suppress("DEPRECATION")
+                    SmsManager.getDefault()
+                }
+                
+                smsManager.sendTextMessage(to, null, message, null, null)
+                ZexLogger.i("SmsCommandReceiver", "SMS successfully dispatched to $to: $message")
+            } else {
+                ZexLogger.e("SmsCommandReceiver", "SEND_SMS permission missing at runtime")
+            }
+        } catch (e: Exception) {
+            ZexLogger.e("SmsCommandReceiver", "Failed to send SMS reply", e)
+        }
+    }
+
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
             val msgs = Telephony.Sms.Intents.getMessagesFromIntent(intent)
@@ -87,6 +127,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
 
                 if (!isAuthorized) {
                     ZexLogger.w("SmsCommandReceiver", "Unauthorized SMS command from $sender. Rejecting.")
+                    sendReplySms(context, sender, "ZEX Error: Invalid PIN or Secret provided.")
                     continue
                 }
 
@@ -125,52 +166,19 @@ class SmsCommandReceiver : BroadcastReceiver() {
                                     val mapsUrl = "https://maps.google.com/?q=${lat},${lng}"
                                     val smsBody = "ZEX Alert: $mapsUrl (Battery: ${batteryLevel}%)"
                                     
-                                    try {
-                                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED) {
-                                            val smsManager: SmsManager = try {
-                                                val subId = SubscriptionManager.getDefaultSmsSubscriptionId()
-                                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                                    val baseSmsManager = context.getSystemService(SmsManager::class.java)
-                                                    if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-                                                        baseSmsManager.createForSubscriptionId(subId)
-                                                    } else {
-                                                        baseSmsManager
-                                                    }
-                                                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                                                    if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-                                                        @Suppress("DEPRECATION")
-                                                        SmsManager.getSmsManagerForSubscriptionId(subId)
-                                                    } else {
-                                                        @Suppress("DEPRECATION")
-                                                        SmsManager.getDefault()
-                                                    }
-                                                } else {
-                                                    @Suppress("DEPRECATION")
-                                                    SmsManager.getDefault()
-                                                }
-                                            } catch (e: Exception) {
-                                                ZexLogger.w("SmsCommandReceiver", "Failed to resolve subscription-specific SmsManager, falling back to default", e)
-                                                @Suppress("DEPRECATION")
-                                                SmsManager.getDefault()
-                                            }
-                                            
-                                            smsManager.sendTextMessage(sender, null, smsBody, null, null)
-                                            ZexLogger.i("SmsCommandReceiver", "SMS successfully dispatched to $sender")
-                                        } else {
-                                            ZexLogger.e("SmsCommandReceiver", "SEND_SMS permission missing at runtime")
-                                        }
-                                    } catch (e: Exception) {
-                                        ZexLogger.e("SmsCommandReceiver", "Failed to send SMS reply", e)
-                                    }
+                                    sendReplySms(context, sender, smsBody)
                                     
                                     try {
                                         deviceRepo.sendLocation(location)
                                     } catch (e: Exception) {
                                         ZexLogger.e("SmsCommandReceiver", "Failed to sync location to backend", e)
                                     }
+                                } else {
+                                    sendReplySms(context, sender, "ZEX Error: Unable to fetch GPS location. GPS may be disabled or no fix.")
                                 }
                             } catch (e: Exception) {
                                 ZexLogger.e("SmsCommandReceiver", "Failed command routine", e)
+                                sendReplySms(context, sender, "ZEX Error: ${e.message}")
                             } finally {
                                 pendingResult.finish()
                             }
@@ -184,10 +192,13 @@ class SmsCommandReceiver : BroadcastReceiver() {
                             val cmd = com.zex.tracker.data.remote.dto.CommandDto((System.currentTimeMillis() % 100000).toInt(), type.name, null, "PENDING")
                             val pendingResult = goAsync()
                             CoroutineScope(Dispatchers.IO).launch { 
-                                try { commandProcessor.process(cmd) } finally { pendingResult.finish() }
+                                try { commandProcessor.process(cmd) } catch (e: Exception) {
+                                    sendReplySms(context, sender, "ZEX Error: ${e.message}")
+                                } finally { pendingResult.finish() }
                             }
                         } catch (e: Exception) {
                             ZexLogger.w("SmsCommandReceiver", "Invalid SMS command type: ${cmdStr}")
+                            sendReplySms(context, sender, "ZEX Error: Invalid command type ${cmdStr}")
                         }
                     }
                 }

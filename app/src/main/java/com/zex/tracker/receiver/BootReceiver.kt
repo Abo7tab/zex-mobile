@@ -8,11 +8,13 @@ import com.zex.tracker.service.ServiceController
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED || 
-            intent.action == Intent.ACTION_LOCKED_BOOT_COMPLETED || 
-            intent.action == "android.intent.action.QUICKBOOT_POWERON") {
-            ZexLogger.w("BootReceiver", "Device Booted. Starting Service.")
-            ServiceController(context).startProtection()
+        val action = intent.action
+        if (action == Intent.ACTION_BOOT_COMPLETED || 
+            action == Intent.ACTION_LOCKED_BOOT_COMPLETED || 
+            action == "android.intent.action.MY_PACKAGE_REPLACED" ||
+            action == "android.intent.action.QUICKBOOT_POWERON") {
+            ZexLogger.w("BootReceiver", "Device Booted or Package Replaced. Starting Service.")
+            com.zex.tracker.service.ZexForegroundService.startService(context)
         }
     }
 }

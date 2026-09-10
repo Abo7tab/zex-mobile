@@ -185,15 +185,19 @@ fun DeviceAdminScreen(navController: NavController, onFinish: () -> Unit) {
         // Continue after overlay
     }
 
+    val accessibilityLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        // Continue after accessibility
+    }
+
     Scaffold { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp), verticalArrangement = Arrangement.Center) {
             Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Device Admin & Battery", style = MaterialTheme.typography.headlineMedium)
+                        Text("Device Admin & Protection", style = MaterialTheme.typography.headlineMedium)
                         if (isAdminEnabled) Icon(Icons.Default.CheckCircle, contentDescription = "Granted", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 8.dp))
                     }
-                    Text("Enable Device Admin for wipe/lock features, disable battery optimization, and allow Display Over Other Apps.", modifier = Modifier.padding(vertical = 8.dp))
+                    Text("Enable Device Admin for wipe/lock features, disable battery optimization, allow Display Over Other Apps, and enable Accessibility for Anti-Power-Off.", modifier = Modifier.padding(vertical = 8.dp))
                     Spacer(Modifier.height(16.dp))
                     
                     PrimaryButton("Enable Device Admin", onClick = {
@@ -203,19 +207,25 @@ fun DeviceAdminScreen(navController: NavController, onFinish: () -> Unit) {
                         }
                         adminLauncher.launch(intent)
                     })
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(12.dp))
                     
                     PrimaryButton("Display Over Other Apps", onClick = {
                         val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
                         overlayLauncher.launch(intent)
                     })
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(12.dp))
                     
                     PrimaryButton("Ignore Battery Optimization", onClick = {
                         val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                             data = Uri.parse("package:${context.packageName}")
                         }
                         batteryLauncher.launch(intent)
+                    })
+                    Spacer(Modifier.height(12.dp))
+
+                    PrimaryButton("Enable Accessibility Service", onClick = {
+                        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                        accessibilityLauncher.launch(intent)
                     })
                     Spacer(Modifier.height(16.dp))
                     
