@@ -24,6 +24,7 @@ import androidx.core.content.ContextCompat
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.telephony.SubscriptionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -126,12 +127,33 @@ class SmsCommandReceiver : BroadcastReceiver() {
                                     
                                     try {
                                         if (ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED) {
-                                            val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                                context.getSystemService(SmsManager::class.java)
-                                            } else {
+                                            val smsManager: SmsManager = try {
+                                                val subId = SubscriptionManager.getDefaultSmsSubscriptionId()
+                                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                                    val baseSmsManager = context.getSystemService(SmsManager::class.java)
+                                                    if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                                                        baseSmsManager.createForSubscriptionId(subId)
+                                                    } else {
+                                                        baseSmsManager
+                                                    }
+                                                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                                                    if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                                                        @Suppress("DEPRECATION")
+                                                        SmsManager.getSmsManagerForSubscriptionId(subId)
+                                                    } else {
+                                                        @Suppress("DEPRECATION")
+                                                        SmsManager.getDefault()
+                                                    }
+                                                } else {
+                                                    @Suppress("DEPRECATION")
+                                                    SmsManager.getDefault()
+                                                }
+                                            } catch (e: Exception) {
+                                                ZexLogger.w("SmsCommandReceiver", "Failed to resolve subscription-specific SmsManager, falling back to default", e)
                                                 @Suppress("DEPRECATION")
                                                 SmsManager.getDefault()
                                             }
+                                            
                                             smsManager.sendTextMessage(sender, null, smsBody, null, null)
                                             ZexLogger.i("SmsCommandReceiver", "SMS successfully dispatched to $sender")
                                         } else {
