@@ -24,12 +24,16 @@ fun ZexNavHost(prefs: SecurePrefs) {
         composable("auth") { AuthScreen(navController) }
         composable("device_register") { DeviceRegisterScreen(navController) }
         composable("permissions") { PermissionsScreen(navController) }
-        composable("device_admin") { DeviceAdminScreen(navController, onFinish = {
-            prefs.putBoolean(ZexConstants.KEY_IS_SETUP_COMPLETE, true)
-            navController.navigate("dashboard") {
-                popUpTo(0)
-            }
-        }) }
+        composable("device_admin") { 
+            val context = androidx.compose.ui.platform.LocalContext.current
+            DeviceAdminScreen(navController, onFinish = {
+                prefs.putBoolean(ZexConstants.KEY_IS_SETUP_COMPLETE, true)
+                com.zex.tracker.service.ZexForegroundService.startService(context)
+                navController.navigate("dashboard") {
+                    popUpTo(0)
+                }
+            }) 
+        }
         composable("dashboard") { DashboardScreen(prefs) }
     }
 }

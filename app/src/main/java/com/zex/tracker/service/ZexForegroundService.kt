@@ -22,6 +22,21 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class ZexForegroundService : Service() {
 
+    companion object {
+        var isRunning = false
+        fun startService(context: Context) {
+            val intent = Intent(context, ZexForegroundService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        }
+        fun stopService(context: Context) {
+            context.stopService(Intent(context, ZexForegroundService::class.java))
+        }
+    }
+
     @Inject lateinit var locationTracker: LocationTracker
     @Inject lateinit var deviceRepo: DeviceRepository
     @Inject lateinit var firebaseListener: FirebaseCommandListener
@@ -33,6 +48,7 @@ class ZexForegroundService : Service() {
     
     override fun onCreate() {
         super.onCreate()
+        isRunning = true
         ZexLogger.i("ZexForegroundService", "Service Created")
         startForeground(1001, createNotification())
         
@@ -104,6 +120,7 @@ class ZexForegroundService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        isRunning = false
         job.cancel()
         locationTracker.stopContinuous()
         firebaseListener.stopListening()
