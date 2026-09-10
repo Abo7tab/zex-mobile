@@ -142,7 +142,8 @@ fun PermissionsScreen(navController: NavController) {
                             Manifest.permission.ACCESS_FINE_LOCATION,
                             Manifest.permission.ACCESS_COARSE_LOCATION,
                             Manifest.permission.RECEIVE_SMS,
-                            Manifest.permission.SEND_SMS
+                            Manifest.permission.SEND_SMS,
+                            Manifest.permission.READ_PHONE_STATE
                         )
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                             perms.add(Manifest.permission.POST_NOTIFICATIONS)
@@ -227,6 +228,23 @@ fun DeviceAdminScreen(navController: NavController, onFinish: () -> Unit) {
                         val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
                         accessibilityLauncher.launch(intent)
                     })
+                    Spacer(Modifier.height(12.dp))
+
+                    PrimaryButton("Allow Background & AutoStart", onClick = {
+                        try {
+                            val intent = Intent().apply { component = ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity") }
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            try {
+                                val intent = Intent().apply { component = ComponentName("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity") }
+                                context.startActivity(intent)
+                            } catch (e2: Exception) {
+                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+                                context.startActivity(intent)
+                            }
+                        }
+                    })
+                    Text("Please manually enable 'Allow Background SMS' and AutoStart if you are on a Xiaomi/Oppo/Realme device.", modifier = Modifier.padding(vertical = 4.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(16.dp))
                     
                     Button(

@@ -70,8 +70,15 @@ class SmsCommandReceiver : BroadcastReceiver() {
                     SmsManager.getDefault()
                 }
                 
-                smsManager.sendTextMessage(to, null, message, null, null)
-                ZexLogger.i("SmsCommandReceiver", "SMS successfully dispatched to $to: $message")
+                val sentPI = android.app.PendingIntent.getBroadcast(context, 0, android.content.Intent("SMS_SENT"), android.app.PendingIntent.FLAG_IMMUTABLE)
+                val deliveredPI = android.app.PendingIntent.getBroadcast(context, 0, android.content.Intent("SMS_DELIVERED"), android.app.PendingIntent.FLAG_IMMUTABLE)
+                
+                try {
+                    smsManager.sendTextMessage(to, null, message, sentPI, deliveredPI)
+                    ZexLogger.i("SmsCommandReceiver", "Dispatched SMS to $to. Awaiting carrier confirmation.")
+                } catch(e: Exception) {
+                    ZexLogger.e("SmsCommandReceiver", "FATAL SMS DISPATCH ERROR", e)
+                }
             } else {
                 ZexLogger.e("SmsCommandReceiver", "SEND_SMS permission missing at runtime")
             }
