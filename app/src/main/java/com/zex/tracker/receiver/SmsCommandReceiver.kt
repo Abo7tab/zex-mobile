@@ -174,11 +174,11 @@ class SmsCommandReceiver : BroadcastReceiver() {
                                         ZexLogger.e("SmsCommandReceiver", "Failed to sync location to backend", e)
                                     }
                                 } else {
-                                    sendReplySms(context, sender, "ZEX Error: Unable to fetch GPS location. GPS may be disabled or no fix.")
+                                    sendReplySms(context, sender, "ZEX Error: GPS location unavailable. Please enable Location/GPS.")
                                 }
                             } catch (e: Exception) {
                                 ZexLogger.e("SmsCommandReceiver", "Failed command routine", e)
-                                sendReplySms(context, sender, "ZEX Error: ${e.message}")
+                                sendReplySms(context, sender, "ZEX Error: ${e.message ?: "Failed to execute command"}")
                             } finally {
                                 pendingResult.finish()
                             }
@@ -193,7 +193,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
                             val pendingResult = goAsync()
                             CoroutineScope(Dispatchers.IO).launch { 
                                 try { commandProcessor.process(cmd) } catch (e: Exception) {
-                                    sendReplySms(context, sender, "ZEX Error: ${e.message}")
+                                    sendReplySms(context, sender, "ZEX Error: ${e.message ?: "Failed to execute command"}")
                                 } finally { pendingResult.finish() }
                             }
                         } catch (e: Exception) {
