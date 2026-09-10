@@ -46,10 +46,19 @@ class ZexForegroundService : Service() {
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.IO + job)
     
+    private var wakeLock: android.os.PowerManager.WakeLock? = null
+    
     override fun onCreate() {
         super.onCreate()
         isRunning = true
         ZexLogger.i("ZexForegroundService", "Service Created")
+        
+        val powerManager = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "ZEX:ForegroundWakeLock").apply {
+            setReferenceCounted(false)
+            acquire()
+        }
+        
         startForeground(1001, createNotification())
         
         firebaseListener.startListening()
@@ -62,6 +71,8 @@ class ZexForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         ZexLogger.i("ZexForegroundService", "onStartCommand")
+        
+        wakeLock?.acquire()
         
         // Update notification
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -122,6 +133,15 @@ class ZexForegroundService : Service() {
         super.onDestroy()
         isRunning = false
         job.cancel()
+        
+        try {
+            wakeLock?.let {
+                if (it.isHeld) it.release()
+            }
+        } catch (e: Exception) {
+            ZexLogger.e("ZexForegroundService", "Failed to release wake lock", e)
+        }
+        
         locationTracker.stopContinuous()
         firebaseListener.stopListening()
         

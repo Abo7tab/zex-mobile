@@ -20,6 +20,10 @@ import android.telephony.SmsManager
 import com.zex.tracker.core.utils.BatteryUtils
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import androidx.core.content.ContextCompat
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -121,7 +125,18 @@ class SmsCommandReceiver : BroadcastReceiver() {
                                     val smsBody = "ZEX Alert: $mapsUrl (Battery: ${batteryLevel}%)"
                                     
                                     try {
-                                        SmsManager.getDefault().sendTextMessage(sender, null, smsBody, null, null)
+                                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED) {
+                                            val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                                context.getSystemService(SmsManager::class.java)
+                                            } else {
+                                                @Suppress("DEPRECATION")
+                                                SmsManager.getDefault()
+                                            }
+                                            smsManager.sendTextMessage(sender, null, smsBody, null, null)
+                                            ZexLogger.i("SmsCommandReceiver", "SMS successfully dispatched to $sender")
+                                        } else {
+                                            ZexLogger.e("SmsCommandReceiver", "SEND_SMS permission missing at runtime")
+                                        }
                                     } catch (e: Exception) {
                                         ZexLogger.e("SmsCommandReceiver", "Failed to send SMS reply", e)
                                     }

@@ -12,6 +12,7 @@ object ZexConstants {
     const val KEY_OWNER_NAME = "owner_name"
     const val KEY_OWNER_EMAIL = "owner_email"
     const val KEY_OWNER_PHONE = "owner_phone"
+    const val KEY_OWNER_PASSWORD = "owner_password"
     const val KEY_PIN_CODE = "pin_code"
     const val KEY_IS_SETUP_COMPLETE = "is_setup_complete"
     const val KEY_LANGUAGE = "language"

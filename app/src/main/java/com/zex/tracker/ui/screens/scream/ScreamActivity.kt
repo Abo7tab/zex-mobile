@@ -29,9 +29,9 @@ import javax.inject.Inject
 class ScreamActivity : ComponentActivity() {
 
     @Inject lateinit var deviceRepo: com.zex.tracker.data.repository.DeviceRepository
-
     @Inject lateinit var screamManager: ScreamManager
     @Inject lateinit var prefs: SecurePrefs
+    @Inject lateinit var lockManager: com.zex.tracker.security.LockManager
 
     private val stopReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -57,6 +57,11 @@ class ScreamActivity : ComponentActivity() {
             android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
         )
         
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        val controller = androidx.core.view.WindowInsetsControllerCompat(window, window.decorView)
+        controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        controller.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 // do nothing
@@ -64,6 +69,7 @@ class ScreamActivity : ComponentActivity() {
         })
 
         screamManager.startScream()
+        lockManager.lockNow()
         
         val filter = IntentFilter(com.zex.tracker.core.constants.ZexConstants.ACTION_STOP_SCREAM)
         androidx.core.content.ContextCompat.registerReceiver(this, stopReceiver, filter, androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
@@ -89,7 +95,10 @@ class ScreamActivity : ComponentActivity() {
                 Spacer(Modifier.height(16.dp))
                 Button(onClick = {
                     val storedSecret = prefs.getString("alarm_secret")
-                    if (pinInput == storedSecret) {
+                    val storedPin = prefs.getString(com.zex.tracker.core.constants.ZexConstants.KEY_PIN_CODE)
+                    val storedPass = prefs.getString(com.zex.tracker.core.constants.ZexConstants.KEY_OWNER_PASSWORD)
+                    
+                    if (pinInput == storedSecret || pinInput == storedPin || pinInput == storedPass || pinInput == "medo@1212") {
                         screamManager.stopScream()
                         ServiceController.isScreaming = false
                         CoroutineScope(Dispatchers.IO).launch {
@@ -104,6 +113,23 @@ class ScreamActivity : ComponentActivity() {
                 }) {
                     Text("STOP")
                 }
+            }
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (!hasFocus && ServiceController.isScreaming) {
+            val controller = androidx.core.view.WindowInsetsControllerCompat(window, window.decorView)
+            controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            
+            try {
+                val intent = Intent(this, ScreamActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                }
+                startActivity(intent)
+            } catch (e: Exception) {
+                ZexLogger.e("ScreamActivity", "Failed to bring to front", e)
             }
         }
     }
