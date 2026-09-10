@@ -53,15 +53,22 @@ class SmsCommandReceiver : BroadcastReceiver() {
                 var isAuthorized = false
                 var cmdStr = ""
 
-                if (!alarmSecret.isNullOrEmpty()) {
-                    if (parts.size == 1 && parts[0] == alarmSecret) {
+                val ownerPin = prefs.getString(ZexConstants.KEY_PIN_CODE)
+                val isValidPin = parts.isNotEmpty() && (
+                    (!alarmSecret.isNullOrEmpty() && parts[0] == alarmSecret) ||
+                    (!ownerPin.isNullOrEmpty() && parts[0] == ownerPin)
+                )
+
+                if (isValidPin) {
+                    if (parts.size == 1) {
                         isAuthorized = true
                         cmdStr = "SOS"
-                    } else if (parts.size >= 2 && parts[0] == alarmSecret) {
+                    } else if (parts.size >= 2) {
                         isAuthorized = true
                         cmdStr = parts[1]
                     }
                 }
+                
                 if (!isAuthorized && storedOwnerPhone.isNotEmpty()) {
                     val sanitizedSender = sender.replace(Regex("\\D"), "")
                     val sanitizedOwner = storedOwnerPhone.replace(Regex("\\D"), "")

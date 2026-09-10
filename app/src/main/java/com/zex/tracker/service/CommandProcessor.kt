@@ -44,7 +44,11 @@ class CommandProcessor @Inject constructor(
                     val interval = command.parameters?.get("interval")?.toIntOrNull() ?: 30
                     searchModeManager.enterSearchMode("command_track", interval)
                 }
-                "STOP_TRACKING" -> searchModeManager.exitSearchMode("command_stop")
+                "STOP_TRACKING", "STOP_SEARCH" -> {
+                    searchModeManager.exitSearchMode("command_stop")
+                    locationTracker.stopContinuous()
+                    ServiceController.isSearching = false
+                }
                 "SCREAM" -> handleScream()
                 "STOP_SCREAM" -> handleStopScream()
                 "LOCK" -> handleLock()

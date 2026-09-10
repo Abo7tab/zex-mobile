@@ -180,6 +180,10 @@ fun DeviceAdminScreen(navController: NavController, onFinish: () -> Unit) {
     val batteryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         // We just continue after battery
     }
+    
+    val overlayLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        // Continue after overlay
+    }
 
     Scaffold { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp), verticalArrangement = Arrangement.Center) {
@@ -189,7 +193,7 @@ fun DeviceAdminScreen(navController: NavController, onFinish: () -> Unit) {
                         Text("Device Admin & Battery", style = MaterialTheme.typography.headlineMedium)
                         if (isAdminEnabled) Icon(Icons.Default.CheckCircle, contentDescription = "Granted", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 8.dp))
                     }
-                    Text("Enable Device Admin for wipe/lock features, and disable battery optimization.", modifier = Modifier.padding(vertical = 8.dp))
+                    Text("Enable Device Admin for wipe/lock features, disable battery optimization, and allow Display Over Other Apps.", modifier = Modifier.padding(vertical = 8.dp))
                     Spacer(Modifier.height(16.dp))
                     
                     PrimaryButton("Enable Device Admin", onClick = {
@@ -198,6 +202,12 @@ fun DeviceAdminScreen(navController: NavController, onFinish: () -> Unit) {
                             putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Needed for remote lock/wipe.")
                         }
                         adminLauncher.launch(intent)
+                    })
+                    Spacer(Modifier.height(16.dp))
+                    
+                    PrimaryButton("Display Over Other Apps", onClick = {
+                        val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
+                        overlayLauncher.launch(intent)
                     })
                     Spacer(Modifier.height(16.dp))
                     
