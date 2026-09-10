@@ -28,6 +28,7 @@ import com.zex.tracker.receiver.ZexDeviceAdminReceiver
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.ui.Alignment
 
 @Composable
@@ -172,6 +173,17 @@ fun DeviceAdminScreen(navController: NavController, onFinish: () -> Unit) {
     val context = LocalContext.current
     var isAdminEnabled by remember { mutableStateOf(false) }
     
+    var isAccessibilityEnabled by remember { mutableStateOf(false) }
+
+    fun checkAccessibility() {
+        val enabledServices = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+        isAccessibilityEnabled = enabledServices?.contains(context.packageName) == true
+    }
+
+    LaunchedEffect(Unit) {
+        checkAccessibility()
+    }
+
     val adminLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         val dpm = context.getSystemService(android.content.Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val component = ComponentName(context, ZexDeviceAdminReceiver::class.java)
@@ -187,7 +199,7 @@ fun DeviceAdminScreen(navController: NavController, onFinish: () -> Unit) {
     }
 
     val accessibilityLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        // Continue after accessibility
+        checkAccessibility()
     }
 
     Scaffold { padding ->
@@ -222,9 +234,18 @@ fun DeviceAdminScreen(navController: NavController, onFinish: () -> Unit) {
                         }
                         batteryLauncher.launch(intent)
                     })
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(24.dp))
 
-                    PrimaryButton("Enable Accessibility Service", onClick = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Anti-Power-Off Protection", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                        if (isAccessibilityEnabled) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = "Enabled", tint = androidx.compose.ui.graphics.Color.Green, modifier = Modifier.padding(start = 8.dp))
+                        } else {
+                            Icon(Icons.Default.Warning, contentDescription = "Disabled", tint = androidx.compose.ui.graphics.Color.Red, modifier = Modifier.padding(start = 8.dp))
+                        }
+                    }
+                    Text("Enable ZEX Accessibility Service to block unauthorized power-off attempts when phone is stolen.", modifier = Modifier.padding(vertical = 4.dp), style = MaterialTheme.typography.bodySmall)
+                    PrimaryButton("Accessibility Settings", onClick = {
                         val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
                         accessibilityLauncher.launch(intent)
                     })
