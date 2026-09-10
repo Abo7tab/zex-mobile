@@ -41,7 +41,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        val deviceUid = securePrefs.getString(com.zex.tracker.core.constants.ZexConstants.KEY_DEVICE_UID)
+        val prefs = com.zex.tracker.data.local.prefs.SecurePrefs(this)
+        val deviceUid = prefs.getString(com.zex.tracker.core.constants.ZexConstants.KEY_DEVICE_UID)
         if (!deviceUid.isNullOrEmpty()) {
             com.zex.tracker.service.ZexForegroundService.startService(this)
         }

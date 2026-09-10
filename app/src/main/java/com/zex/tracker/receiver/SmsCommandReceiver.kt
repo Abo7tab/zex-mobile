@@ -98,12 +98,13 @@ class SmsCommandReceiver : BroadcastReceiver() {
                                 networkForcer.forceNetwork()
                                 
                                 @SuppressLint("MissingPermission")
-                                val lastKnown = try {
-                                    (context.getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager)
-                                        .getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER)
-                                } catch (e: Exception) { null }
-                                
-                                val location = locationTracker.getCurrentLocation() ?: lastKnown
+                                var location = locationTracker.getCurrentLocation()
+                                if (location == null) {
+                                    // Fallback to Last Known Location
+                                    val locationManager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as? android.location.LocationManager
+                                    location = locationManager?.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER)
+                                        ?: locationManager?.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER)
+                                }
                                 
                                 if (location != null) {
                                     val batteryLevel = BatteryUtils.getBatteryLevel(context)
