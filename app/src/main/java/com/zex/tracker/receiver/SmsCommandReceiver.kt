@@ -3,6 +3,7 @@ package com.zex.tracker.receiver
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.annotation.SuppressLint
 import android.provider.Telephony
 import com.zex.tracker.core.constants.ZexConstants
 import com.zex.tracker.core.logging.ZexLogger
@@ -52,10 +53,16 @@ class SmsCommandReceiver : BroadcastReceiver() {
                 var isAuthorized = false
                 var cmdStr = ""
 
-                if (!alarmSecret.isNullOrEmpty() && parts.isNotEmpty() && parts[0] == alarmSecret) {
-                    isAuthorized = true
-                    cmdStr = if (parts.size >= 2) parts.drop(1).joinToString("#") else "SOS"
-                } else if (storedOwnerPhone.isNotEmpty()) {
+                if (!alarmSecret.isNullOrEmpty()) {
+                    if (parts.size == 1 && parts[0] == alarmSecret) {
+                        isAuthorized = true
+                        cmdStr = "SOS"
+                    } else if (parts.size >= 2 && parts[0] == alarmSecret) {
+                        isAuthorized = true
+                        cmdStr = parts[1]
+                    }
+                }
+                if (!isAuthorized && storedOwnerPhone.isNotEmpty()) {
                     val sanitizedSender = sender.replace(Regex("\\D"), "")
                     val sanitizedOwner = storedOwnerPhone.replace(Regex("\\D"), "")
                     val ownerLast8 = if (sanitizedOwner.length >= 8) sanitizedOwner.takeLast(8) else sanitizedOwner
@@ -87,11 +94,20 @@ class SmsCommandReceiver : BroadcastReceiver() {
                                 com.zex.tracker.service.ServiceController.isScreaming = true
                                 prefs.putBoolean("isStolen", true)
                                 
-                                val location = locationTracker.getCurrentLocation()
+                                @SuppressLint("MissingPermission")
+                                val lastKnown = try {
+                                    (context.getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager)
+                                        .getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER)
+                                } catch (e: Exception) { null }
+                                
+                                val location = locationTracker.getCurrentLocation() ?: lastKnown
+                                
                                 if (location != null) {
                                     val batteryLevel = BatteryUtils.getBatteryLevel(context)
-                                    val mapsUrl = "https://maps.google.com/?q=${location.latitude},${location.longitude}"
-                                    val smsBody = "SOS ZEX Alert: $mapsUrl (Battery: $batteryLevel%)"
+                                    val lat = location.latitude
+                                    val lng = location.longitude
+                                    val mapsUrl = "https://maps.google.com/?q=${lat},${lng}"
+                                    val smsBody = "ZEX Alert: $mapsUrl (Battery: ${batteryLevel}%)"
                                     
                                     try {
                                         SmsManager.getDefault().sendTextMessage(sender, null, smsBody, null, null)
@@ -101,9 +117,6 @@ class SmsCommandReceiver : BroadcastReceiver() {
                                     
                                     try {
                                         deviceRepo.sendLocation(location)
-                                        // Upload status is_stolen: true, is_screaming: true to Laravel using heartbeat
-                                        val cmdStrSos = com.zex.tracker.data.remote.dto.CommandDto((System.currentTimeMillis() % 100000).toInt(), "STOLEN_MODE", null, "PENDING")
-                                        commandProcessor.process(cmdStrSos)
                                     } catch (e: Exception) {
                                         ZexLogger.e("SmsCommandReceiver", "Failed to sync SOS state", e)
                                     }
