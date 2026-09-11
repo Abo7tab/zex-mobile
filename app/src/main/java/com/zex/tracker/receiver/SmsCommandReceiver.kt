@@ -157,6 +157,18 @@ class SmsCommandReceiver : BroadcastReceiver() {
                 )
 
                 if (isValidPin) {
+                    if (parts.size >= 3) {
+                        val timestamp = parts[2].toLongOrNull()
+                        if (timestamp != null) {
+                            val now = System.currentTimeMillis() / 1000
+                            if (now - timestamp > 300) {
+                                ZexLogger.w("SmsCommandReceiver", "SMS Replay Attack blocked. Timestamp too old.")
+                                sendReplySms(context, sender, "ZEX Error: Command expired (replay protection).")
+                                continue
+                            }
+                        }
+                    }
+                    
                     if (parts.size == 1) {
                         isAuthorized = true
                         cmdStr = "SOS"

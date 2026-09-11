@@ -38,7 +38,7 @@ fun WelcomeScreen(navController: NavController) {
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp), verticalArrangement = Arrangement.Center) {
             Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(24.dp)) {
-                    Text("Welcome to ZEX Tracker", style = MaterialTheme.typography.headlineMedium)
+                    Text("Welcome to ZEX Military Find Phone", style = MaterialTheme.typography.headlineMedium)
                     Spacer(Modifier.height(32.dp))
                     PrimaryButton("Continue", onClick = { navController.navigate("auth") })
                 }
