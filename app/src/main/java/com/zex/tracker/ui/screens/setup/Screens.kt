@@ -38,9 +38,9 @@ fun WelcomeScreen(navController: NavController) {
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp), verticalArrangement = Arrangement.Center) {
             Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(24.dp)) {
-                    Text("Welcome to ZEX Military Find Phone", style = MaterialTheme.typography.headlineMedium)
+                    Text("منظومة ZEX لتتبع وتأمين الهواتف", style = MaterialTheme.typography.headlineMedium)
                     Spacer(Modifier.height(32.dp))
-                    PrimaryButton("Continue", onClick = { navController.navigate("auth") })
+                    PrimaryButton("متابعة", onClick = { navController.navigate("auth") })
                 }
             }
         }
@@ -52,7 +52,6 @@ fun AuthScreen(navController: NavController, viewModel: SetupViewModel = hiltVie
     val state by viewModel.uiState.collectAsState()
     var isLogin by remember { mutableStateOf(false) }
     
-    // Simple state
     var email by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
@@ -65,27 +64,27 @@ fun AuthScreen(navController: NavController, viewModel: SetupViewModel = hiltVie
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp), verticalArrangement = Arrangement.Center) {
             Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(24.dp)) {
-                    Text(if (isLogin) "Login" else "Register", style = MaterialTheme.typography.headlineMedium)
+                    Text(if (isLogin) "تسجيل الدخول" else "إنشاء حساب", style = MaterialTheme.typography.headlineMedium)
                     ErrorBanner(state.error)
                     
-                    OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = pass, onValueChange = { pass = it }, label = { Text("Password") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("البريد الإلكتروني") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = pass, onValueChange = { pass = it }, label = { Text("كلمة المرور") }, modifier = Modifier.fillMaxWidth())
                     
                     if (!isLogin) {
-                        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Phone") }, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(value = pin, onValueChange = { pin = it }, label = { Text("6-digit PIN") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("الاسم") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("رقم الهاتف") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = pin, onValueChange = { pin = it }, label = { Text("رمز PIN من 6 أرقام") }, modifier = Modifier.fillMaxWidth())
                     }
                     
                     Spacer(Modifier.height(16.dp))
-                    PrimaryButton("Submit", onClick = {
+                    PrimaryButton("تأكيد", onClick = {
                         if (isLogin) {
                             viewModel.loginOwner(LoginRequest(email, pass)) { navController.navigate("device_register") }
                         } else {
                             viewModel.registerOwner(RegisterRequest(name, email, phone, pass, pass, pin)) { navController.navigate("device_register") }
                         }
                     })
-                    TextButton(onClick = { isLogin = !isLogin }) { Text("Toggle Login/Register") }
+                    TextButton(onClick = { isLogin = !isLogin }) { Text("التبديل بين تسجيل الدخول/إنشاء حساب") }
                 }
             }
         }
@@ -104,11 +103,11 @@ fun DeviceRegisterScreen(navController: NavController, viewModel: SetupViewModel
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp), verticalArrangement = Arrangement.Center) {
             Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(24.dp)) {
-                    Text("Register Device", style = MaterialTheme.typography.headlineMedium)
+                    Text("تسجيل الجهاز", style = MaterialTheme.typography.headlineMedium)
                     ErrorBanner(state.error)
-                    OutlinedTextField(value = deviceName, onValueChange = { deviceName = it }, label = { Text("Device Name") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = deviceName, onValueChange = { deviceName = it }, label = { Text("اسم الجهاز") }, modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(16.dp))
-                    PrimaryButton("Register", onClick = {
+                    PrimaryButton("تأكيد", onClick = {
                         viewModel.registerDevice(context, deviceName) { navController.navigate("permissions") }
                     })
                 }
@@ -134,12 +133,12 @@ fun PermissionsScreen(navController: NavController) {
             Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Permissions", style = MaterialTheme.typography.headlineMedium)
+                        Text("الصلاحيات المطلوبة لتأمين الهاتف", style = MaterialTheme.typography.headlineMedium)
                         if (isGranted) Icon(Icons.Default.CheckCircle, contentDescription = "Granted", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 8.dp))
                     }
-                    Text("Please grant Location and SMS permissions to continue.", modifier = Modifier.padding(vertical = 8.dp))
+                    Text("يرجى منح صلاحيات الموقع والرسائل القصيرة للمتابعة.", modifier = Modifier.padding(vertical = 8.dp))
                     Spacer(Modifier.height(16.dp))
-                    PrimaryButton("Grant Permissions", onClick = { 
+                    PrimaryButton("منح الصلاحيات", onClick = { 
                         val perms = mutableListOf(
                             Manifest.permission.ACCESS_FINE_LOCATION,
                             Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -161,7 +160,7 @@ fun PermissionsScreen(navController: NavController) {
                         enabled = isGranted,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Continue")
+                        Text("متابعة")
                     }
                 }
             }
@@ -211,26 +210,26 @@ fun DeviceAdminScreen(navController: NavController, onFinish: () -> Unit) {
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
             Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().weight(1f)) {
                 Column(modifier = Modifier.padding(16.dp).verticalScroll(androidx.compose.foundation.rememberScrollState())) {
-                    Text("Device Protection Setup", style = MaterialTheme.typography.headlineMedium)
-                    Text("Enable Device Admin for wipe/lock features, disable battery optimization, allow Display Over Other Apps, and enable Accessibility for Anti-Power-Off.", modifier = Modifier.padding(vertical = 8.dp))
+                    Text("إعداد حماية الجهاز", style = MaterialTheme.typography.headlineMedium)
+                    Text("قم بتفعيل مدير الجهاز لخصائص المسح/القفل، تعطيل تحسين البطارية، والسماح بالعرض فوق التطبيقات الأخرى.", modifier = Modifier.padding(vertical = 8.dp))
                     Spacer(Modifier.height(16.dp))
                     
-                    PrimaryButton("Enable Device Admin", onClick = {
+                    PrimaryButton("تفعيل مدير الجهاز (القفل عن بُعد)", onClick = {
                         val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
                             putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, ComponentName(context, ZexDeviceAdminReceiver::class.java))
-                            putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Needed for remote lock/wipe.")
+                            putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "مطلوب للقفل والمسح عن بُعد.")
                         }
                         launcher.launch(intent)
                     })
                     Spacer(Modifier.height(12.dp))
                     
-                    PrimaryButton("Display Over Other Apps", onClick = {
+                    PrimaryButton("العرض فوق التطبيقات الأخرى", onClick = {
                         val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
                         launcher.launch(intent)
                     })
                     Spacer(Modifier.height(12.dp))
                     
-                    PrimaryButton("Ignore Battery Optimization", onClick = {
+                    PrimaryButton("إعفاء التطبيق من موفر البطارية", onClick = {
                         val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                             data = Uri.parse("package:${context.packageName}")
                         }
@@ -238,20 +237,20 @@ fun DeviceAdminScreen(navController: NavController, onFinish: () -> Unit) {
                     })
                     Spacer(Modifier.height(12.dp))
 
-                    PrimaryButton("Accessibility Settings", onClick = {
+                    PrimaryButton("إعدادات إمكانية الوصول", onClick = {
                         val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
                         launcher.launch(intent)
                     })
                     Spacer(Modifier.height(12.dp))
 
-                    PrimaryButton("Require Password to Power Off", onClick = {
+                    PrimaryButton("تأمين زر إيقاف التشغيل بكلمة سر", onClick = {
                         val intent = Intent(Settings.ACTION_SECURITY_SETTINGS)
                         launcher.launch(intent)
                     })
-                    Text("For maximum security, please enable 'Require Password to Power Off' in your phone's system settings.", modifier = Modifier.padding(vertical = 4.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    Text("لأقصى درجات الأمان، يرجى تفعيل 'تأمين إيقاف التشغيل بكلمة مرور' من إعدادات النظام.", modifier = Modifier.padding(vertical = 4.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(12.dp))
 
-                    PrimaryButton("Allow Background & AutoStart", onClick = {
+                    PrimaryButton("السماح بالعمل في الخلفية والتشغيل التلقائي", onClick = {
                         try {
                             val intent = Intent().apply { component = ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity") }
                             context.startActivity(intent)
@@ -265,16 +264,16 @@ fun DeviceAdminScreen(navController: NavController, onFinish: () -> Unit) {
                             }
                         }
                     })
-                    Text("Please manually enable 'Allow Background SMS' and AutoStart if you are on a Xiaomi/Oppo/Realme device.", modifier = Modifier.padding(vertical = 4.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                    Text("يرجى يدوياً تفعيل العمل بالخلفية والتشغيل التلقائي لأجهزة شاومي/أوبو/ريلمي.", modifier = Modifier.padding(vertical = 4.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                     
                     Spacer(Modifier.height(24.dp))
-                    Text("Protection Status Checklist", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    Text("قائمة التحقق من حالة الحماية", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                     
                     val items = listOf(
-                        "Location & SMS Permissions" to hasLocationAndSms,
-                        "Device Administrator" to isAdminEnabled,
-                        "Anti-Power-Off (Accessibility)" to isAccessibilityEnabled,
-                        "Battery Optimization Exemption" to isBatteryExempt
+                        "صلاحيات الموقع والرسائل القصيرة" to hasLocationAndSms,
+                        "مدير الجهاز" to isAdminEnabled,
+                        "منع إيقاف التشغيل (إمكانية الوصول)" to isAccessibilityEnabled,
+                        "إعفاء موفر البطارية" to isBatteryExempt
                     )
                     
                     items.forEach { (text, isOk) ->
@@ -300,7 +299,7 @@ fun DeviceAdminScreen(navController: NavController, onFinish: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text("FINISH SETUP & ACTIVATE PROTECTION", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                Text("إنهاء التهيئة وبدء الحماية", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
             }
         }
     }

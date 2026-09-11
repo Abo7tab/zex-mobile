@@ -138,19 +138,19 @@ class ZexForegroundService : Service() {
     private fun createNotification(): android.app.Notification {
         val channelId = "zex_protection_channel"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val chan = NotificationChannel(channelId, "Military Security Service", NotificationManager.IMPORTANCE_LOW)
+            val chan = NotificationChannel(channelId, "خدمة الأمان والحماية", NotificationManager.IMPORTANCE_LOW)
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(chan)
         }
         
         val text = when {
-            ServiceController.isStolen -> "Stolen mode active — ZEX Military"
-            ServiceController.isSearching -> "Search mode active — ZEX Military"
-            else -> "Device protection active — ZEX Military"
+            ServiceController.isStolen -> "وضع السرقة مفعل — ZEX Military"
+            ServiceController.isSearching -> "وضع البحث مفعل — ZEX Military"
+            else -> "نظام حماية الهاتف يعمل في الخلفية"
         }
 
         return NotificationCompat.Builder(this, channelId)
-            .setContentTitle("ZEX Military Find Phone")
+            .setContentTitle("ZEX Military - تتبع الهاتف")
             .setContentText(text)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setOngoing(true)
