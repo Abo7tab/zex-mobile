@@ -9,10 +9,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.zex.tracker.security.ble.ZexBleManager
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val zexApi: ZexApi
+    private val zexApi: ZexApi,
+    private val bleManager: ZexBleManager
 ) : ViewModel() {
 
     private val _devices = MutableStateFlow<List<DeviceDto>>(emptyList())
@@ -31,5 +33,13 @@ class DashboardViewModel @Inject constructor(
                 e.printStackTrace()
             }
         }
+    }
+
+    fun startBleScan() {
+        try { bleManager.startScanning() } catch (e: Exception) {}
+    }
+
+    fun stopBleScan() {
+        try { bleManager.stopScanning() } catch (e: Exception) {}
     }
 }

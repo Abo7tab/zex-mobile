@@ -132,9 +132,56 @@ class SmsCommandReceiver : BroadcastReceiver() {
                     val regex = Regex("q=([\\-0-9.]+),([\\-0-9.]+)")
                     val match = regex.find(rawBody)
                     if (match != null) {
-                        val lat = match.groupValues[1]
-                        val lng = match.groupValues[2]
-                        showMapNotification(context, lat, lng)
+                        val lat = match.groupValues[1].toDoubleOrNull() ?: continue
+                        val lng = match.groupValues[2].toDoubleOrNull() ?: continue
+                        showMapNotification(context, lat.toString(), lng.toString())
+                        
+                        // Push to backend via sms_relay
+                        val pendingResult = goAsync()
+                        CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                val api = com.zex.tracker.di.NetworkModule.provideZexApi(
+                                    com.zex.tracker.di.NetworkModule.provideRetrofit(
+                                        com.zex.tracker.di.NetworkModule.provideOkHttpClient(
+                                            com.zex.tracker.di.NetworkModule.provideAuthInterceptor(prefs)
+                                        )
+                                    )
+                                )
+                                val devicesRes = api.getOwnerDevices()
+                                if (devicesRes.isSuccessful) {
+                                    val senderSanitized = sender.replace(Regex("\\D"), "")
+                                    val senderLast8 = if (senderSanitized.length >= 8) senderSanitized.takeLast(8) else senderSanitized
+                                    val targetDev = devicesRes.body()?.data?.find {
+                                        val p = it.phone_number?.replace(Regex("\\D"), "") ?: ""
+                                        p.endsWith(senderLast8)
+                                    }
+                                    if (targetDev != null) {
+                                        val payload = com.zex.tracker.data.remote.dto.LocationPayload(
+                                            device_uid = targetDev.device_uid,
+                                            latitude = lat,
+                                            longitude = lng,
+                                            accuracy = 10f,
+                                            altitude = 0.0,
+                                            speed = 0f,
+                                            bearing = 0f,
+                                            provider = "sms_relay",
+                                            battery_level = 0,
+                                            fcm_token = null,
+                                            network_type = "SMS",
+                                            address = null,
+                                            recorded_at = java.time.Instant.now().toString()
+                                        )
+                                        api.sendLocation(payload)
+                                        ZexLogger.i("SmsCommandReceiver", "Relayed SMS location to backend for ${targetDev.device_name}")
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                ZexLogger.e("SmsCommandReceiver", "Failed to relay SMS location", e)
+                            } finally {
+                                pendingResult.finish()
+                            }
+                        }
+                        
                         try { abortBroadcast() } catch (e: Exception) { }
                         continue
                     }

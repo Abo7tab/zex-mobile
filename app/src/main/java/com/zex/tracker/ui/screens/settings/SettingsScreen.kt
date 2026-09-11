@@ -62,7 +62,8 @@ fun SettingsScreen(
         Column(modifier = Modifier.padding(padding).padding(16.dp)) {
             TabRow(selectedTabIndex = tab) {
                 Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("الملف الشخصي") })
-                Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("الأمان") })
+                Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("كلمة المرور") })
+                Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("رمز PIN") })
             }
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -81,27 +82,39 @@ fun SettingsScreen(
                 ) {
                     Text(if (isLoading) "جاري الحفظ..." else "حفظ التغييرات")
                 }
-            } else {
-                OutlinedTextField(value = currentPassword, onValueChange = { currentPassword = it }, label = { Text("كلمة المرور الحالية") }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation())
+            } else if (tab == 1) {
+                OutlinedTextField(value = currentPassword, onValueChange = { currentPassword = it }, label = { Text("كلمة المرور الحالية (مطلوبة)") }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation())
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = newPassword, onValueChange = { newPassword = it }, label = { Text("كلمة المرور الجديدة (اختياري)") }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation())
+                OutlinedTextField(value = newPassword, onValueChange = { newPassword = it }, label = { Text("كلمة المرور الجديدة") }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation())
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(value = confirmPassword, onValueChange = { confirmPassword = it }, label = { Text("تأكيد كلمة المرور الجديدة") }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation())
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = pinCode, onValueChange = { pinCode = it }, label = { Text("رمز PIN (6 أرقام)") }, modifier = Modifier.fillMaxWidth())
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = { 
                         if (newPassword.isNotEmpty() && newPassword != confirmPassword) {
                             Toast.makeText(context, "كلمة المرور غير متطابقة", Toast.LENGTH_SHORT).show()
                         } else {
-                            viewModel.updateSecurity(currentPassword, newPassword, confirmPassword, pinCode) 
+                            viewModel.updateSecurity(currentPassword, newPassword, confirmPassword, "") 
                         }
                     }, 
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !isLoading && currentPassword.isNotEmpty()
+                    enabled = !isLoading && currentPassword.isNotEmpty() && newPassword.isNotEmpty()
                 ) {
-                    Text(if (isLoading) "جاري التحديث..." else "تحديث الأمان")
+                    Text(if (isLoading) "جاري التحديث..." else "تحديث كلمة المرور")
+                }
+            } else {
+                OutlinedTextField(value = currentPassword, onValueChange = { currentPassword = it }, label = { Text("كلمة المرور الحالية (مطلوبة للتحقق)") }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation())
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = pinCode, onValueChange = { pinCode = it }, label = { Text("رمز PIN (6 أرقام)") }, modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { 
+                        viewModel.updateSecurity(currentPassword, "", "", pinCode) 
+                    }, 
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading && currentPassword.isNotEmpty() && pinCode.isNotEmpty()
+                ) {
+                    Text(if (isLoading) "جاري التحديث..." else "تحديث رمز PIN")
                 }
             }
         }

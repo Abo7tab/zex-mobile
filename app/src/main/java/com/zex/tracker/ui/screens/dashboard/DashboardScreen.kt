@@ -3,48 +3,41 @@ package com.zex.tracker.ui.screens.dashboard
 import android.content.Intent
 import android.net.Uri
 import android.telephony.SmsManager
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import com.zex.tracker.core.constants.ZexConstants
 import com.zex.tracker.data.local.prefs.SecurePrefs
 import com.zex.tracker.data.remote.dto.DeviceDto
-import com.zex.tracker.service.ServiceController
 import com.zex.tracker.service.ZexForegroundService
-import kotlinx.coroutines.launch
-
-import androidx.hilt.navigation.compose.hiltViewModel
-
-import androidx.compose.material.icons.filled.Settings
-import androidx.navigation.NavController
+import com.zex.tracker.security.ble.ZexBleManager
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel: DashboardViewModel = hiltViewModel()) {
     val uid = prefs.getString(ZexConstants.KEY_DEVICE_UID) ?: "Unknown UID"
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
     
     var isRunning by remember { mutableStateOf(ZexForegroundService.isRunning) }
     val devices by viewModel.devices.collectAsState()
-    var selectedDevice by remember { mutableStateOf<DeviceDto?>(null) }
+    var selectedTargetDevice by remember { mutableStateOf<DeviceDto?>(null) }
     var expanded by remember { mutableStateOf(false) }
 
-    // SMS Tools State
     var targetPhone by remember { mutableStateOf("") }
     
     val commandOptions = listOf(
@@ -61,13 +54,19 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
     var selectedCommand by remember { mutableStateOf(commandOptions[0]) }
     var commandExpanded by remember { mutableStateOf(false) }
 
+    var isBleScanning by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         viewModel.fetchDevices()
     }
 
     LaunchedEffect(devices) {
-        if (devices.isNotEmpty() && selectedDevice == null) {
-            selectedDevice = devices.find { it.device_uid == uid } ?: devices[0]
+        if (devices.isNotEmpty() && selectedTargetDevice == null) {
+            val nonSelf = devices.firstOrNull { it.device_uid != uid }
+            selectedTargetDevice = nonSelf ?: devices.first()
+            if (nonSelf?.phone_number != null) {
+                targetPhone = nonSelf.phone_number
+            }
         }
     }
 
@@ -90,95 +89,107 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
                 .fillMaxSize()
                 .padding(padding)
                 .padding(16.dp)
-                .background(MaterialTheme.colorScheme.background),
+                .background(MaterialTheme.colorScheme.background)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Device Selector
-            if (devices.isNotEmpty()) {
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
-                ) {
-                    OutlinedTextField(
-                        value = selectedDevice?.device_name ?: "اختر الجهاز",
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth(),
-                        label = { Text("الجهاز المحدد") }
-                    )
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        devices.forEach { device ->
-                            DropdownMenuItem(
-                                text = { Text(device.device_name) },
-                                onClick = {
-                                    selectedDevice = device
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
             
-            Spacer(Modifier.height(16.dp))
-            
-            // Map Button
-            Button(
-                onClick = {
-                    val mapIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://maps.google.com/?q="))
-                    context.startActivity(mapIntent)
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("فتح خرائط جوجل")
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            // Protection Status (Local Device Only)
-            if (selectedDevice?.device_uid == uid) {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("حماية الجهاز الحالي", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(if (isRunning) "نشط" else "معطل")
-                            Switch(
-                                checked = isRunning,
-                                onCheckedChange = { checked ->
-                                    if (checked) ZexForegroundService.startService(context)
-                                    else ZexForegroundService.stopService(context)
-                                    isRunning = checked
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            // Offline SMS Toolkit
+            // 1. Current Device Card
+            val currentDevice = devices.find { it.device_uid == uid }
             Card(
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Text("أدوات طوارئ SMS بدون إنترنت", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("إرسال أوامر عبر رسائل SMS للتحكم بالجهاز بدون إنترنت.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 16.dp))
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("📱 هذا الجهاز (الجهاز الحالي)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Spacer(Modifier.height(8.dp))
+                    Text("الموديل: ${currentDevice?.device_model ?: android.os.Build.MODEL}")
+                    Text("البطارية: ${currentDevice?.battery_level ?: "--"}%")
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("حالة الحماية: " + (if (isRunning) "نشطة" else "معطلة"), fontWeight = FontWeight.SemiBold)
+                        Switch(
+                            checked = isRunning,
+                            onCheckedChange = { checked ->
+                                if (checked) ZexForegroundService.startService(context)
+                                else ZexForegroundService.stopService(context)
+                                isRunning = checked
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+            
+            Button(
+                onClick = {
+                    if (isBleScanning) return@Button
+                    isBleScanning = true
+                    viewModel.startBleScan()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+            ) {
+                Text(if (isBleScanning) "جاري البحث عن الأجهزة (30ث)..." else "📡 فحص البلوتوث الميداني (BLE Radar)")
+            }
+
+            LaunchedEffect(isBleScanning) {
+                if (isBleScanning) {
+                    delay(30000)
+                    viewModel.stopBleScan()
+                    isBleScanning = false
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // 2. Remote Target Card
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("🎯 اختيار الجهاز المستهدف والتحكم عن بُعد", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(12.dp))
+                    
+                    if (devices.size > 1) {
+                        ExposedDropdownMenuBox(
+                            expanded = expanded,
+                            onExpandedChange = { expanded = !expanded }
+                        ) {
+                            OutlinedTextField(
+                                value = selectedTargetDevice?.device_name ?: "اختر جهازك",
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                label = { Text("أجهزتك المسجلة") }
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                devices.filter { it.device_uid != uid }.forEach { device ->
+                                    DropdownMenuItem(
+                                        text = { Text("${device.device_name} - ${device.device_model}") },
+                                        onClick = {
+                                            selectedTargetDevice = device
+                                            targetPhone = device.phone_number ?: ""
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                    }
 
                     OutlinedTextField(
                         value = targetPhone,
@@ -187,7 +198,8 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
-                    Spacer(Modifier.height(8.dp))
+                    
+                    Spacer(Modifier.height(12.dp))
 
                     ExposedDropdownMenuBox(
                         expanded = commandExpanded,
@@ -221,14 +233,22 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
 
                     Button(
                         onClick = {
-                            if (targetPhone.isNotBlank()) {
+                            var cleanPhone = targetPhone.replace(" ", "")
+                            if (cleanPhone.startsWith("01")) {
+                                cleanPhone = "+20${cleanPhone.substring(1)}"
+                            }
+                            if (cleanPhone.isNotBlank()) {
+                                val message = "#ZEX#357005#${selectedCommand.second}"
                                 try {
                                     val smsManager = context.getSystemService(SmsManager::class.java)
-                                    val fallbackPin = "357005"
-                                    val message = "#ZEX#$fallbackPin#${selectedCommand.second}"
-                                    smsManager.sendTextMessage(targetPhone, null, message, null, null)
+                                    smsManager.sendTextMessage(cleanPhone, null, message, null, null)
+                                    Toast.makeText(context, "محاولة الإرسال في الخلفية تمت...", Toast.LENGTH_SHORT).show()
                                 } catch (e: Exception) {
-                                    e.printStackTrace()
+                                    // Fallback to official messaging app
+                                    val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$cleanPhone")).apply {
+                                        putExtra("sms_body", message)
+                                    }
+                                    context.startActivity(intent)
                                 }
                             }
                         },
@@ -241,3 +261,4 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
         }
     }
 }
+
