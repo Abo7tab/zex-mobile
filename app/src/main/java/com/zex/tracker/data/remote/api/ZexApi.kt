@@ -14,6 +14,12 @@ interface ZexApi {
     @GET("auth/me")
     suspend fun getOwnerMe(): Response<DataWrapper<OwnerDto>>
 
+    @PUT("auth/profile")
+    suspend fun updateProfile(@Body request: Map<String, String>): Response<DataWrapper<OwnerDto>>
+
+    @PUT("auth/security")
+    suspend fun updateSecurity(@Body request: Map<String, String>): Response<Unit>
+
     @GET("devices")
     suspend fun getOwnerDevices(): Response<DataWrapper<List<DeviceDto>>>
 

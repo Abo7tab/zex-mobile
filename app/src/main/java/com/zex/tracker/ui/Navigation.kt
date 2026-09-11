@@ -34,6 +34,7 @@ fun ZexNavHost(prefs: SecurePrefs) {
                 }
             }) 
         }
-        composable("dashboard") { DashboardScreen(prefs) }
+        composable("dashboard") { DashboardScreen(prefs, navController) }
+        composable("settings") { com.zex.tracker.ui.screens.settings.SettingsScreen(navController) }
     }
 }

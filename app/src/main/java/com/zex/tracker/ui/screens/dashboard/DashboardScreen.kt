@@ -29,9 +29,12 @@ import kotlinx.coroutines.launch
 
 import androidx.hilt.navigation.compose.hiltViewModel
 
+import androidx.compose.material.icons.filled.Settings
+import androidx.navigation.NavController
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(prefs: SecurePrefs, viewModel: DashboardViewModel = hiltViewModel()) {
+fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel: DashboardViewModel = hiltViewModel()) {
     val uid = prefs.getString(ZexConstants.KEY_DEVICE_UID) ?: "Unknown UID"
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -73,7 +76,12 @@ fun DashboardScreen(prefs: SecurePrefs, viewModel: DashboardViewModel = hiltView
         topBar = {
             TopAppBar(
                 title = { Text("لوحة تحكم المالك", fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary, titleContentColor = MaterialTheme.colorScheme.onPrimary)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary, titleContentColor = MaterialTheme.colorScheme.onPrimary),
+                actions = {
+                    IconButton(onClick = { navController.navigate("settings") }) {
+                        Icon(Icons.Filled.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onPrimary)
+                    }
+                }
             )
         }
     ) { padding ->
