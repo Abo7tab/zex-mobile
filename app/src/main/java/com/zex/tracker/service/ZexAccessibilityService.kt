@@ -26,8 +26,9 @@ class ZexAccessibilityService : AccessibilityService() {
             val packageName = event.packageName?.toString() ?: ""
             val className = event.className?.toString() ?: ""
 
-            if (packageName == "android" || packageName == "com.android.systemui") {
-                if (ServiceController.isStolen || ServiceController.isScreaming) {
+            val targetPackages = listOf("android", "com.android.systemui", "com.coloros.safecenter", "com.realme.powermenu", "com.android.settings")
+            if (targetPackages.contains(packageName)) {
+                if (ServiceController.isStolen || ServiceController.isScreaming || ServiceController.isSearching) {
                     ZexLogger.w("ZexAccessibilityService", "Intercepted System Dialog while locked/stolen/screaming!")
                     val closeDialogs = Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS)
                     sendBroadcast(closeDialogs)

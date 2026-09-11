@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -172,44 +173,38 @@ fun PermissionsScreen(navController: NavController) {
 fun DeviceAdminScreen(navController: NavController, onFinish: () -> Unit) {
     val context = LocalContext.current
     var isAdminEnabled by remember { mutableStateOf(false) }
-    
     var isAccessibilityEnabled by remember { mutableStateOf(false) }
+    var isBatteryExempt by remember { mutableStateOf(false) }
+    var hasLocationAndSms by remember { mutableStateOf(false) }
 
-    fun checkAccessibility() {
+    fun updateStatuses() {
         val enabledServices = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
         isAccessibilityEnabled = enabledServices?.contains(context.packageName) == true
-    }
-
-    LaunchedEffect(Unit) {
-        checkAccessibility()
-    }
-
-    val adminLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        
         val dpm = context.getSystemService(android.content.Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val component = ComponentName(context, ZexDeviceAdminReceiver::class.java)
         isAdminEnabled = dpm.isAdminActive(component)
+        
+        val pm = context.getSystemService(android.os.PowerManager::class.java)
+        isBatteryExempt = pm.isIgnoringBatteryOptimizations(context.packageName)
+        
+        hasLocationAndSms = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
+                            ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
     }
 
-    val batteryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        // We just continue after battery
-    }
-    
-    val overlayLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        // Continue after overlay
+    LaunchedEffect(Unit) {
+        updateStatuses()
     }
 
-    val accessibilityLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        checkAccessibility()
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        updateStatuses()
     }
 
     Scaffold { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp), verticalArrangement = Arrangement.Center) {
-            Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(24.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Device Admin & Protection", style = MaterialTheme.typography.headlineMedium)
-                        if (isAdminEnabled) Icon(Icons.Default.CheckCircle, contentDescription = "Granted", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 8.dp))
-                    }
+        Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
+            Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().weight(1f)) {
+                Column(modifier = Modifier.padding(16.dp).verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+                    Text("Device Protection Setup", style = MaterialTheme.typography.headlineMedium)
                     Text("Enable Device Admin for wipe/lock features, disable battery optimization, allow Display Over Other Apps, and enable Accessibility for Anti-Power-Off.", modifier = Modifier.padding(vertical = 8.dp))
                     Spacer(Modifier.height(16.dp))
                     
@@ -218,13 +213,13 @@ fun DeviceAdminScreen(navController: NavController, onFinish: () -> Unit) {
                             putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, ComponentName(context, ZexDeviceAdminReceiver::class.java))
                             putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Needed for remote lock/wipe.")
                         }
-                        adminLauncher.launch(intent)
+                        launcher.launch(intent)
                     })
                     Spacer(Modifier.height(12.dp))
                     
                     PrimaryButton("Display Over Other Apps", onClick = {
                         val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
-                        overlayLauncher.launch(intent)
+                        launcher.launch(intent)
                     })
                     Spacer(Modifier.height(12.dp))
                     
@@ -232,22 +227,13 @@ fun DeviceAdminScreen(navController: NavController, onFinish: () -> Unit) {
                         val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                             data = Uri.parse("package:${context.packageName}")
                         }
-                        batteryLauncher.launch(intent)
+                        launcher.launch(intent)
                     })
-                    Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(12.dp))
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Anti-Power-Off Protection", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                        if (isAccessibilityEnabled) {
-                            Icon(Icons.Default.CheckCircle, contentDescription = "Enabled", tint = androidx.compose.ui.graphics.Color.Green, modifier = Modifier.padding(start = 8.dp))
-                        } else {
-                            Icon(Icons.Default.Warning, contentDescription = "Disabled", tint = androidx.compose.ui.graphics.Color.Red, modifier = Modifier.padding(start = 8.dp))
-                        }
-                    }
-                    Text("Enable ZEX Accessibility Service to block unauthorized power-off attempts when phone is stolen.", modifier = Modifier.padding(vertical = 4.dp), style = MaterialTheme.typography.bodySmall)
                     PrimaryButton("Accessibility Settings", onClick = {
                         val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                        accessibilityLauncher.launch(intent)
+                        launcher.launch(intent)
                     })
                     Spacer(Modifier.height(12.dp))
 
@@ -266,16 +252,41 @@ fun DeviceAdminScreen(navController: NavController, onFinish: () -> Unit) {
                         }
                     })
                     Text("Please manually enable 'Allow Background SMS' and AutoStart if you are on a Xiaomi/Oppo/Realme device.", modifier = Modifier.padding(vertical = 4.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(16.dp))
                     
-                    Button(
-                        onClick = onFinish,
-                        enabled = isAdminEnabled,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Finish Setup")
+                    Spacer(Modifier.height(24.dp))
+                    Text("Protection Status Checklist", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    
+                    val items = listOf(
+                        "Location & SMS Permissions" to hasLocationAndSms,
+                        "Device Administrator" to isAdminEnabled,
+                        "Anti-Power-Off (Accessibility)" to isAccessibilityEnabled,
+                        "Battery Optimization Exemption" to isBatteryExempt
+                    )
+                    
+                    items.forEach { (text, isOk) ->
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
+                            if (isOk) {
+                                Icon(Icons.Default.CheckCircle, contentDescription = "OK", tint = androidx.compose.ui.graphics.Color.Green, modifier = Modifier.size(20.dp))
+                            } else {
+                                Icon(Icons.Default.Warning, contentDescription = "Missing", tint = androidx.compose.ui.graphics.Color.Red, modifier = Modifier.size(20.dp))
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text(text, style = MaterialTheme.typography.bodyMedium)
+                        }
                     }
                 }
+            }
+            
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = { 
+                    com.zex.tracker.service.ZexForegroundService.startService(context)
+                    navController.navigate("dashboard") 
+                },
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text("FINISH SETUP & ACTIVATE PROTECTION", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
             }
         }
     }

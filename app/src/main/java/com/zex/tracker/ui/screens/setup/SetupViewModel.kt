@@ -39,6 +39,9 @@ class SetupViewModel @Inject constructor(
                     prefs.putString(ZexConstants.KEY_OWNER_TOKEN, res.data.token)
                     prefs.putInt(ZexConstants.KEY_OWNER_ID, res.data.owner.id)
                     prefs.putString(ZexConstants.KEY_OWNER_PHONE, res.data.owner.phone ?: "")
+                    if (prefs.getString(ZexConstants.KEY_PIN_CODE).isNullOrEmpty()) {
+                        prefs.putString(ZexConstants.KEY_PIN_CODE, "357005")
+                    }
                     ZexLogger.i("Setup", "Owner registered successfully")
                     _uiState.value = _uiState.value.copy(isLoading = false)
                     onSuccess()
@@ -58,6 +61,9 @@ class SetupViewModel @Inject constructor(
                     prefs.putString(ZexConstants.KEY_OWNER_TOKEN, res.data.token)
                     prefs.putInt(ZexConstants.KEY_OWNER_ID, res.data.owner.id)
                     prefs.putString(ZexConstants.KEY_OWNER_PHONE, res.data.owner.phone ?: "")
+                    if (prefs.getString(ZexConstants.KEY_PIN_CODE).isNullOrEmpty()) {
+                        prefs.putString(ZexConstants.KEY_PIN_CODE, "357005")
+                    }
                     ZexLogger.i("Setup", "Owner logged in successfully")
                     _uiState.value = _uiState.value.copy(isLoading = false)
                     onSuccess()
