@@ -43,9 +43,20 @@ fun DashboardScreen(prefs: SecurePrefs, viewModel: DashboardViewModel = hiltView
 
     // SMS Tools State
     var targetPhone by remember { mutableStateOf("") }
-    var selectedCommand by remember { mutableStateOf("LOCATE") }
+    
+    val commandOptions = listOf(
+        "📍 تحديد الموقع (LOCATE)" to "LOCATE",
+        "🚨 تشغيل الإنذار (SCREAM)" to "SCREAM",
+        "🛑 إيقاف الإنذار (STOP_SCREAM)" to "STOP_SCREAM",
+        "⚠️ وضع السرقة الشامل (STOLEN)" to "STOLEN_MODE",
+        "✅ إلغاء وضع السرقة (FOUND)" to "FOUND_MODE",
+        "🔒 قفل الشاشة قسرياً (LOCK)" to "LOCK",
+        "🌐 تفعيل بيانات الهاتف (ENABLE_NET)" to "ENABLE_NET",
+        "⚡ تتبع مستمر لحظي (TRACK)" to "CONTINUOUS_TRACK"
+    )
+    
+    var selectedCommand by remember { mutableStateOf(commandOptions[0]) }
     var commandExpanded by remember { mutableStateOf(false) }
-    val commandsList = listOf("LOCATE", "SCREAM", "ENABLE_NET", "STOLEN_MODE")
 
     LaunchedEffect(Unit) {
         viewModel.fetchDevices()
@@ -175,7 +186,7 @@ fun DashboardScreen(prefs: SecurePrefs, viewModel: DashboardViewModel = hiltView
                         onExpandedChange = { commandExpanded = !commandExpanded }
                     ) {
                         OutlinedTextField(
-                            value = selectedCommand,
+                            value = selectedCommand.first,
                             onValueChange = {},
                             readOnly = true,
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = commandExpanded) },
@@ -186,9 +197,9 @@ fun DashboardScreen(prefs: SecurePrefs, viewModel: DashboardViewModel = hiltView
                             expanded = commandExpanded,
                             onDismissRequest = { commandExpanded = false }
                         ) {
-                            commandsList.forEach { cmd ->
+                            commandOptions.forEach { cmd ->
                                 DropdownMenuItem(
-                                    text = { Text(cmd) },
+                                    text = { Text(cmd.first) },
                                     onClick = {
                                         selectedCommand = cmd
                                         commandExpanded = false
@@ -206,7 +217,7 @@ fun DashboardScreen(prefs: SecurePrefs, viewModel: DashboardViewModel = hiltView
                                 try {
                                     val smsManager = context.getSystemService(SmsManager::class.java)
                                     val fallbackPin = "357005"
-                                    val message = "#ZEX#$fallbackPin#$selectedCommand"
+                                    val message = "#ZEX#$fallbackPin#${selectedCommand.second}"
                                     smsManager.sendTextMessage(targetPhone, null, message, null, null)
                                 } catch (e: Exception) {
                                     e.printStackTrace()
