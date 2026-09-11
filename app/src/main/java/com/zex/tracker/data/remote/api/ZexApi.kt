@@ -14,6 +14,9 @@ interface ZexApi {
     @GET("auth/me")
     suspend fun getOwnerMe(): Response<DataWrapper<OwnerDto>>
 
+    @GET("devices")
+    suspend fun getOwnerDevices(): Response<DataWrapper<List<DeviceDto>>>
+
     @POST("devices/register")
     suspend fun registerDevice(@Body request: DeviceRegisterRequest): Response<DeviceRegisterResponse>
 

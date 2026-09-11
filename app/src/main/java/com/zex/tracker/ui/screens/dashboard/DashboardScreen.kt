@@ -1,5 +1,8 @@
 package com.zex.tracker.ui.screens.dashboard
 
+import android.content.Intent
+import android.net.Uri
+import android.telephony.SmsManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -7,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,111 +22,200 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.zex.tracker.core.constants.ZexConstants
 import com.zex.tracker.data.local.prefs.SecurePrefs
+import com.zex.tracker.data.remote.dto.DeviceDto
 import com.zex.tracker.service.ServiceController
 import com.zex.tracker.service.ZexForegroundService
+import kotlinx.coroutines.launch
+
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(prefs: SecurePrefs) {
+fun DashboardScreen(prefs: SecurePrefs, viewModel: DashboardViewModel = hiltViewModel()) {
     val uid = prefs.getString(ZexConstants.KEY_DEVICE_UID) ?: "Unknown UID"
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     
-    // Auto refresh trigger
     var isRunning by remember { mutableStateOf(ZexForegroundService.isRunning) }
+    val devices by viewModel.devices.collectAsState()
+    var selectedDevice by remember { mutableStateOf<DeviceDto?>(null) }
+    var expanded by remember { mutableStateOf(false) }
 
-    // Dummy effect to poll for service status occasionally if we really wanted to, but we can just rely on the toggle
-    // For now we trust the toggle + ZexForegroundService.isRunning state.
+    // SMS Tools State
+    var targetPhone by remember { mutableStateOf("") }
+    var selectedCommand by remember { mutableStateOf("LOCATE") }
+    var commandExpanded by remember { mutableStateOf(false) }
+    val commandsList = listOf("LOCATE", "SCREAM", "ENABLE_NET", "STOLEN_MODE")
+
+    LaunchedEffect(Unit) {
+        viewModel.fetchDevices()
+    }
+
+    LaunchedEffect(devices) {
+        if (devices.isNotEmpty() && selectedDevice == null) {
+            selectedDevice = devices.find { it.device_uid == uid } ?: devices[0]
+        }
+    }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = { Text("ZEX Owner Hub", fontWeight = FontWeight.Bold) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary, titleContentColor = MaterialTheme.colorScheme.onPrimary)
+            )
+        }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(24.dp),
+                .padding(16.dp)
+                .background(MaterialTheme.colorScheme.background),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("ZEX Dashboard", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(16.dp))
-            
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (ServiceController.isStolen) {
-                    FilterChip(selected = true, onClick = {}, label = { Text("Stolen") }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.errorContainer))
-                }
-                if (ServiceController.isSearching) {
-                    FilterChip(selected = true, onClick = {}, label = { Text("Searching") }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primaryContainer))
-                }
-                if (ServiceController.isScreaming) {
-                    FilterChip(selected = true, onClick = {}, label = { Text("Screaming") }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.error))
-                }
-                if (!ServiceController.isStolen && !ServiceController.isSearching && !ServiceController.isScreaming) {
-                    FilterChip(selected = true, onClick = {}, label = { Text("Normal") })
+            // Device Selector
+            if (devices.isNotEmpty()) {
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
+                ) {
+                    OutlinedTextField(
+                        value = selectedDevice?.device_name ?: "Select Device",
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        label = { Text("Selected Device") }
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        devices.forEach { device ->
+                            DropdownMenuItem(
+                                text = { Text(device.device_name) },
+                                onClick = {
+                                    selectedDevice = device
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
                 }
             }
             
-            Spacer(Modifier.height(32.dp))
-
-            // Large Shield Icon
-            Box(
-                modifier = Modifier
-                    .size(140.dp)
-                    .clip(CircleShape)
-                    .background(if (isRunning) Color(0xFF10B981).copy(alpha = 0.1f) else Color.Gray.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
+            Spacer(Modifier.height(16.dp))
+            
+            // Map Button
+            Button(
+                onClick = {
+                    val mapIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://maps.google.com/?q="))
+                    context.startActivity(mapIntent)
+                },
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(
-                    imageVector = if (isRunning) Icons.Filled.Shield else Icons.Outlined.Shield,
-                    contentDescription = "Shield",
-                    tint = if (isRunning) Color(0xFF10B981) else Color.Gray,
-                    modifier = Modifier.size(80.dp)
-                )
+                Text("Open Google Maps")
             }
 
-            Spacer(Modifier.height(16.dp))
-            
-            Text(
-                text = if (isRunning) "ZEX Active Protection ON" else "Protection Disabled",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = if (isRunning) Color(0xFF10B981) else Color.Gray
-            )
+            Spacer(Modifier.height(24.dp))
 
-            Spacer(Modifier.height(32.dp))
+            // Protection Status (Local Device Only)
+            if (selectedDevice?.device_uid == uid) {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Local Device Protection", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(if (isRunning) "Active" else "Disabled")
+                            Switch(
+                                checked = isRunning,
+                                onCheckedChange = { checked ->
+                                    if (checked) ZexForegroundService.startService(context)
+                                    else ZexForegroundService.stopService(context)
+                                    isRunning = checked
+                                }
+                            )
+                        }
+                    }
+                }
+            }
 
-            // Modern Status Card
+            Spacer(Modifier.height(24.dp))
+
+            // Offline SMS Toolkit
             Card(
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text("Device UID", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                    Text(uid, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                    
-                    Divider(Modifier.padding(vertical = 12.dp))
-                    
-                    Row(
+                    Text("Offline SMS Tools", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Send direct SMS commands to control device offline.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 16.dp))
+
+                    OutlinedTextField(
+                        value = targetPhone,
+                        onValueChange = { targetPhone = it },
+                        label = { Text("Target Phone Number") },
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        singleLine = true
+                    )
+                    Spacer(Modifier.height(8.dp))
+
+                    ExposedDropdownMenuBox(
+                        expanded = commandExpanded,
+                        onExpandedChange = { commandExpanded = !commandExpanded }
                     ) {
-                        Text(
-                            text = "Background Protection",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium
+                        OutlinedTextField(
+                            value = selectedCommand,
+                            onValueChange = {},
+                            readOnly = true,
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = commandExpanded) },
+                            modifier = Modifier.menuAnchor().fillMaxWidth(),
+                            label = { Text("Command") }
                         )
-                        Switch(
-                            checked = isRunning,
-                            onCheckedChange = { checked ->
-                                if (checked) {
-                                    ZexForegroundService.startService(context)
-                                } else {
-                                    ZexForegroundService.stopService(context)
-                                }
-                                isRunning = checked
+                        ExposedDropdownMenu(
+                            expanded = commandExpanded,
+                            onDismissRequest = { commandExpanded = false }
+                        ) {
+                            commandsList.forEach { cmd ->
+                                DropdownMenuItem(
+                                    text = { Text(cmd) },
+                                    onClick = {
+                                        selectedCommand = cmd
+                                        commandExpanded = false
+                                    }
+                                )
                             }
-                        )
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            if (targetPhone.isNotBlank()) {
+                                try {
+                                    val smsManager = context.getSystemService(SmsManager::class.java)
+                                    val fallbackPin = "357005"
+                                    val message = "#ZEX#$fallbackPin#$selectedCommand"
+                                    smsManager.sendTextMessage(targetPhone, null, message, null, null)
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Send SMS Command")
                     }
                 }
             }

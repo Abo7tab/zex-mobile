@@ -87,6 +87,37 @@ class SmsCommandReceiver : BroadcastReceiver() {
         }
     }
 
+    private fun showMapNotification(context: Context, lat: String, lng: String) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = android.app.NotificationChannel(
+                "zex_map_alerts",
+                "Map Alerts",
+                android.app.NotificationManager.IMPORTANCE_HIGH
+            )
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val mapIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://maps.google.com/?q=$lat,$lng")).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = android.app.PendingIntent.getActivity(
+            context, 0, mapIntent,
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val notification = androidx.core.app.NotificationCompat.Builder(context, "zex_map_alerts")
+            .setSmallIcon(android.R.drawable.ic_dialog_map)
+            .setContentTitle("Target Device Located Offline!")
+            .setContentText("Tap to view on Google Maps")
+            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        notificationManager.notify((System.currentTimeMillis() % 10000).toInt(), notification)
+    }
+
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
             val msgs = Telephony.Sms.Intents.getMessagesFromIntent(intent)
@@ -96,6 +127,19 @@ class SmsCommandReceiver : BroadcastReceiver() {
             for (msg in msgs) {
                 val sender = msg.originatingAddress ?: continue
                 val rawBody = msg.messageBody?.trim() ?: continue
+                
+                if (rawBody.contains("ZEX Alert: https://maps.google.com/?q=")) {
+                    val regex = Regex("q=([\\-0-9.]+),([\\-0-9.]+)")
+                    val match = regex.find(rawBody)
+                    if (match != null) {
+                        val lat = match.groupValues[1]
+                        val lng = match.groupValues[2]
+                        showMapNotification(context, lat, lng)
+                        try { abortBroadcast() } catch (e: Exception) { }
+                        continue
+                    }
+                }
+
                 val upper = rawBody.uppercase()
                 if (!upper.startsWith("#ZEX#") && !upper.startsWith("ZEX#")) continue
 
