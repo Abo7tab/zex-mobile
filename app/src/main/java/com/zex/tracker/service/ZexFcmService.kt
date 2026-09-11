@@ -32,13 +32,20 @@ class ZexFcmService : FirebaseMessagingService() {
         ZexLogger.i("FCM", "Received FCM Message")
         
         try {
+            val powerManager = getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+            val wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "ZEX:FCMWakeLock")
+            wakeLock.acquire(15000L) // 15 seconds to ensure processing completes
+
             val data = message.data
             val cmdId = data["id"]?.toIntOrNull() ?: return
             val typeStr = data["type"] ?: return
             val type = CommandType.valueOf(typeStr)
             
             val cmd = com.zex.tracker.data.remote.dto.CommandDto(cmdId, type.name, data, "PENDING")
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { commandProcessor.process(cmd) }
+            CoroutineScope(Dispatchers.IO).launch { 
+                commandProcessor.process(cmd)
+                if (wakeLock.isHeld) wakeLock.release()
+            }
         } catch (e: Exception) {
             ZexLogger.e("FCM", "Failed to process FCM data", e)
         }
