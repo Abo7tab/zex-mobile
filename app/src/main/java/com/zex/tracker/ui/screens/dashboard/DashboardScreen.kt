@@ -61,7 +61,7 @@ fun DashboardScreen(prefs: SecurePrefs, viewModel: DashboardViewModel = hiltView
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("ZEX Owner Hub", fontWeight = FontWeight.Bold) },
+                title = { Text("لوحة تحكم المالك", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary, titleContentColor = MaterialTheme.colorScheme.onPrimary)
             )
         }
@@ -81,12 +81,12 @@ fun DashboardScreen(prefs: SecurePrefs, viewModel: DashboardViewModel = hiltView
                     onExpandedChange = { expanded = !expanded }
                 ) {
                     OutlinedTextField(
-                        value = selectedDevice?.device_name ?: "Select Device",
+                        value = selectedDevice?.device_name ?: "اختر الجهاز",
                         onValueChange = {},
                         readOnly = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                         modifier = Modifier.menuAnchor().fillMaxWidth(),
-                        label = { Text("Selected Device") }
+                        label = { Text("الجهاز المحدد") }
                     )
                     ExposedDropdownMenu(
                         expanded = expanded,
@@ -115,7 +115,7 @@ fun DashboardScreen(prefs: SecurePrefs, viewModel: DashboardViewModel = hiltView
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Open Google Maps")
+                Text("فتح خرائط جوجل")
             }
 
             Spacer(Modifier.height(24.dp))
@@ -128,14 +128,14 @@ fun DashboardScreen(prefs: SecurePrefs, viewModel: DashboardViewModel = hiltView
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Local Device Protection", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text("حماية الجهاز الحالي", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(8.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(if (isRunning) "Active" else "Disabled")
+                            Text(if (isRunning) "نشط" else "معطل")
                             Switch(
                                 checked = isRunning,
                                 onCheckedChange = { checked ->
@@ -158,13 +158,13 @@ fun DashboardScreen(prefs: SecurePrefs, viewModel: DashboardViewModel = hiltView
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text("Offline SMS Tools", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("Send direct SMS commands to control device offline.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 16.dp))
+                    Text("أدوات طوارئ SMS بدون إنترنت", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("إرسال أوامر عبر رسائل SMS للتحكم بالجهاز بدون إنترنت.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 16.dp))
 
                     OutlinedTextField(
                         value = targetPhone,
                         onValueChange = { targetPhone = it },
-                        label = { Text("Target Phone Number") },
+                        label = { Text("الجهاز المستهدف (رقم الهاتف)") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
@@ -180,7 +180,7 @@ fun DashboardScreen(prefs: SecurePrefs, viewModel: DashboardViewModel = hiltView
                             readOnly = true,
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = commandExpanded) },
                             modifier = Modifier.menuAnchor().fillMaxWidth(),
-                            label = { Text("Command") }
+                            label = { Text("اختر الأمر") }
                         )
                         ExposedDropdownMenu(
                             expanded = commandExpanded,
@@ -215,7 +215,7 @@ fun DashboardScreen(prefs: SecurePrefs, viewModel: DashboardViewModel = hiltView
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Send SMS Command")
+                        Text("إرسال أمر SMS طوارئ")
                     }
                 }
             }
