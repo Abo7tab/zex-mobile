@@ -135,7 +135,7 @@
             </intent-filter>
         </receiver>
 
-        <receiver android:name=".receiver.SimChangeReceiver"
+        <receiver android:name=".receiver.SimStateReceiver"
                   android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.SIM_STATE_CHANGED" />

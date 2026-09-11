@@ -128,4 +128,13 @@ class DeviceRepository @Inject constructor(
     suspend fun sendAlert(payload: AlertRequest): ApiResult<Unit> = safeApiCall {
         api.sendAlert(payload)
     }
+
+    suspend fun reportSimChange(newNumber: String): ApiResult<Unit> = safeApiCall {
+        val payload = AlertRequest(
+            device_uid = prefs.getString(ZexConstants.KEY_DEVICE_UID) ?: "",
+            type = "SIM_CHANGED",
+            message = "SIM Card was changed. New Number: $newNumber"
+        )
+        api.sendAlert(payload)
+    }
 }

@@ -17,7 +17,16 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): ZexDatabase {
-        return Room.databaseBuilder(context, ZexDatabase::class.java, "zex.db")
+        val prefs = com.zex.tracker.data.local.prefs.SecurePrefs(context)
+        var dbKey = prefs.getString("db_encryption_key")
+        if (dbKey.isNullOrEmpty()) {
+            dbKey = java.util.UUID.randomUUID().toString()
+            prefs.putString("db_encryption_key", dbKey)
+        }
+        val factory = net.sqlcipher.database.SupportFactory(dbKey.toByteArray())
+
+        return Room.databaseBuilder(context, ZexDatabase::class.java, "zex_secure.db")
+            .openHelperFactory(factory)
             .fallbackToDestructiveMigration()
             .build()
     }

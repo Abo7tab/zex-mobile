@@ -107,14 +107,13 @@ class CommandProcessor @Inject constructor(
     }
 
     private fun handleLock() {
-        if (lockManager.isDeviceAdminActive()) {
-            lockManager.lockNow()
-        } else {
-            val intent = Intent(context, LockActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            }
-            context.startActivity(intent)
+        val deviceAdminManager = com.zex.tracker.security.DeviceAdminManager(context)
+        deviceAdminManager.lockDevice()
+        
+        val intent = Intent(context, LockActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
+        context.startActivity(intent)
     }
 
     private suspend fun handleStatus() {
