@@ -16,6 +16,14 @@ data class LocationPayload(
     val recorded_at: String
 )
 
+data class BleRelayPayload(
+    val target_device_hash: String,
+    val latitude: Double,
+    val longitude: Double,
+    val accuracy: Float,
+    val battery_level: Int
+)
+
 data class HeartbeatPayload(
     val device_uid: String,
     val battery_level: Int,

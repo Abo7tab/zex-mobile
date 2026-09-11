@@ -136,7 +136,7 @@ fun PermissionsScreen(navController: NavController) {
                         Text("الصلاحيات المطلوبة لتأمين الهاتف", style = MaterialTheme.typography.headlineMedium)
                         if (isGranted) Icon(Icons.Default.CheckCircle, contentDescription = "Granted", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 8.dp))
                     }
-                    Text("يرجى منح صلاحيات الموقع والرسائل القصيرة للمتابعة.", modifier = Modifier.padding(vertical = 8.dp))
+                    Text("يرجى منح صلاحيات الموقع والرسائل القصيرة وصلاحية البلوتوث للتتبع الأوفلاين (BLE Mesh) للمتابعة.", modifier = Modifier.padding(vertical = 8.dp))
                     Spacer(Modifier.height(16.dp))
                     PrimaryButton("منح الصلاحيات", onClick = { 
                         val perms = mutableListOf(
@@ -146,6 +146,11 @@ fun PermissionsScreen(navController: NavController) {
                             Manifest.permission.SEND_SMS,
                             Manifest.permission.READ_PHONE_STATE
                         )
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            perms.add(Manifest.permission.BLUETOOTH_SCAN)
+                            perms.add(Manifest.permission.BLUETOOTH_ADVERTISE)
+                            perms.add(Manifest.permission.BLUETOOTH_CONNECT)
+                        }
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                             perms.add(Manifest.permission.POST_NOTIFICATIONS)
                         }

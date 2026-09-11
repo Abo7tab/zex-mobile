@@ -23,6 +23,9 @@ interface ZexApi {
     @POST("locations")
     suspend fun sendLocation(@Body payload: LocationPayload): Response<Unit>
 
+    @POST("locations/ble-relay")
+    suspend fun sendBleRelayLocation(@Body payload: BleRelayPayload): Response<Unit>
+
     @POST("devices/heartbeat")
     suspend fun sendHeartbeat(@Body payload: HeartbeatPayload): Response<HeartbeatResponsePayload>
 
