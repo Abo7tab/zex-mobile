@@ -56,6 +56,8 @@ class CommandProcessor @Inject constructor(
                 "STOLEN_MODE" -> {
                     prefs.putBoolean("isStolen", true)
                     ServiceController.isStolen = true
+                    val deviceAdminManager = com.zex.tracker.security.DeviceAdminManager(context)
+                    deviceAdminManager.lockDevice()
                     searchModeManager.enterSearchMode("stolen_mode", 30)
                 }
                 "FOUND_MODE" -> {

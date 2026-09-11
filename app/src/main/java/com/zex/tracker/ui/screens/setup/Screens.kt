@@ -244,6 +244,13 @@ fun DeviceAdminScreen(navController: NavController, onFinish: () -> Unit) {
                     })
                     Spacer(Modifier.height(12.dp))
 
+                    PrimaryButton("Require Password to Power Off", onClick = {
+                        val intent = Intent(Settings.ACTION_SECURITY_SETTINGS)
+                        launcher.launch(intent)
+                    })
+                    Text("For maximum security, please enable 'Require Password to Power Off' in your phone's system settings.", modifier = Modifier.padding(vertical = 4.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(12.dp))
+
                     PrimaryButton("Allow Background & AutoStart", onClick = {
                         try {
                             val intent = Intent().apply { component = ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity") }
