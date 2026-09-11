@@ -15,6 +15,14 @@ class BootReceiver : BroadcastReceiver() {
             action == "android.intent.action.QUICKBOOT_POWERON") {
             ZexLogger.w("BootReceiver", "Device Booted or Package Replaced. Starting Service.")
             com.zex.tracker.service.ZexForegroundService.startService(context)
+            
+            val workRequest = androidx.work.PeriodicWorkRequestBuilder<com.zex.tracker.service.ZexWatchdogWorker>(15, java.util.concurrent.TimeUnit.MINUTES)
+                .build()
+            androidx.work.WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                "ZexWatchdogWorker",
+                androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+                workRequest
+            )
         }
     }
 }

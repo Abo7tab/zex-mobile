@@ -192,12 +192,19 @@ fun DeviceAdminScreen(navController: NavController, onFinish: () -> Unit) {
                             ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
     }
 
-    LaunchedEffect(Unit) {
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         updateStatuses()
     }
 
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+    LaunchedEffect(Unit) {
         updateStatuses()
+        val pm = context.getSystemService(android.os.PowerManager::class.java)
+        if (!pm.isIgnoringBatteryOptimizations(context.packageName)) {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:${context.packageName}")
+            }
+            launcher.launch(intent)
+        }
     }
 
     Scaffold { padding ->

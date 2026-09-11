@@ -45,6 +45,14 @@ class MainActivity : ComponentActivity() {
         val deviceUid = prefs.getString(com.zex.tracker.core.constants.ZexConstants.KEY_DEVICE_UID)
         if (!deviceUid.isNullOrEmpty()) {
             com.zex.tracker.service.ZexForegroundService.startService(this)
+            
+            val workRequest = androidx.work.PeriodicWorkRequestBuilder<com.zex.tracker.service.ZexWatchdogWorker>(15, java.util.concurrent.TimeUnit.MINUTES)
+                .build()
+            androidx.work.WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+                "ZexWatchdogWorker",
+                androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+                workRequest
+            )
         }
     }
 }
