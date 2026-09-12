@@ -145,6 +145,4 @@ dependencies {
 }
 dependencies { 
     implementation("at.favre.lib:bcrypt:0.10.2") 
-    implementation("net.zetetic:android-database-sqlcipher:4.5.4")
-    implementation("androidx.sqlite:sqlite-ktx:2.4.0")
 }
