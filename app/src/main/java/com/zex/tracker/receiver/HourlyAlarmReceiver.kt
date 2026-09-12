@@ -65,11 +65,11 @@ class HourlyAlarmReceiver : BroadcastReceiver() {
                     }
                 }
 
-                searchModeManager.checkOwnerSearching()
+                // Reschedule the next hourly alarm
+                scheduler.scheduleHourlyChecks()
             } catch (e: Exception) {
                 ZexLogger.e("HourlyAlarmReceiver", "Failed search check", e)
             } finally {
-                scheduler.scheduleHourlyChecks() // reschedule next alarm
                 try {
                     if (wakeLock.isHeld) wakeLock.release()
                 } catch (e: Exception) {}

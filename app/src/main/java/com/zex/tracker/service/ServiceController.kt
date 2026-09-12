@@ -11,11 +11,11 @@ import javax.inject.Singleton
 @Singleton
 class ServiceController @Inject constructor(@ApplicationContext private val context: Context) {
     companion object {
-        var isTracking: Boolean = false
-        var trackingInterval: Long = 30000L
-        var isScreaming: Boolean = false
-        var isStolen: Boolean = false
-        var isSearching: Boolean = false
+        @Volatile var isTracking: Boolean = false
+        @Volatile var trackingInterval: Long = 30000L
+        @Volatile var isScreaming: Boolean = false
+        @Volatile var isStolen: Boolean = false
+        @Volatile var isSearching: Boolean = false
     }
 
     fun startProtection() {

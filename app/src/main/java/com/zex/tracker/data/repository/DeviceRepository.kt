@@ -16,7 +16,9 @@ import java.util.Locale
 import javax.inject.Inject
 import com.zex.tracker.data.local.dao.LocationDao
 import com.zex.tracker.data.local.entity.LocationEntity
+import javax.inject.Singleton
 
+@Singleton
 class DeviceRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val api: ZexApi,
@@ -103,7 +105,9 @@ class DeviceRepository @Inject constructor(
                 if (attempt is ApiResult.Success) uids.add(loc.id)
             }
             if (uids.isNotEmpty()) locationDao.markUploaded(uids)
-        } catch (e: Exception) {}
+        } catch (e: Exception) {
+            com.zex.tracker.core.logging.ZexLogger.w("DeviceRepository", "flushPendingLocations failed: ${e.message}")
+        }
     }
 
     suspend fun sendCommandResponse(cmdId: Int, status: String, responseData: Map<String, String>? = null): ApiResult<Unit> = safeApiCall {

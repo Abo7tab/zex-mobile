@@ -20,10 +20,17 @@ class ZexFcmService : FirebaseMessagingService() {
     @Inject lateinit var prefs: SecurePrefs
     @Inject lateinit var commandProcessor: CommandProcessor
 
+    private val job = kotlinx.coroutines.SupervisorJob()
+    private val scope = CoroutineScope(Dispatchers.IO + job)
+
+    override fun onDestroy() {
+        super.onDestroy()
+        job.cancel()
+    }
+
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         ZexLogger.i("FCM", "New FCM token generated: $token")
-        // Note: Store local, sync with backend on next heartbeat if endpoint doesn't exist yet
         prefs.putString("fcm_token", token)
     }
 
@@ -33,33 +40,35 @@ class ZexFcmService : FirebaseMessagingService() {
         
         val powerManager = getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
         val wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "ZEX:FCMWakeLock")
+        wakeLock.acquire(20000L) // 20 seconds max
         
-        try {
-            wakeLock.acquire(15000L) // 15 seconds to ensure processing completes
-
-            val data = message.data
-            val cmdId = data["id"]?.toIntOrNull()
-            val typeStr = data["type"]
-            
-            if (cmdId == null || typeStr == null) {
+        val data = message.data
+        val cmdId = data["id"]?.toIntOrNull()
+        val typeStr = data["type"]
+        
+        if (cmdId == null || typeStr == null) {
+            try { if (wakeLock.isHeld) wakeLock.release() } catch (e: Exception) {}
+            return
+        }
+        
+        val type = try {
+            CommandType.valueOf(typeStr)
+        } catch (e: IllegalArgumentException) {
+            ZexLogger.w("FCM", "Unknown command type received: $typeStr")
+            try { if (wakeLock.isHeld) wakeLock.release() } catch (e2: Exception) {}
+            return
+        }
+        
+        val cmd = com.zex.tracker.data.remote.dto.CommandDto(cmdId, type.name, data, "PENDING")
+        
+        scope.launch { 
+            try {
+                commandProcessor.process(cmd)
+            } catch (e: Exception) {
+                ZexLogger.e("FCM", "Failed to process FCM command", e)
+            } finally {
                 try { if (wakeLock.isHeld) wakeLock.release() } catch (e: Exception) {}
-                return
             }
-            
-            val type = CommandType.valueOf(typeStr)
-            val cmd = com.zex.tracker.data.remote.dto.CommandDto(cmdId, type.name, data, "PENDING")
-            
-            CoroutineScope(Dispatchers.IO).launch { 
-                try {
-                    commandProcessor.process(cmd)
-                } finally {
-                    try { if (wakeLock.isHeld) wakeLock.release() } catch (e: Exception) {}
-                }
-            }
-        } catch (e: Exception) {
-            ZexLogger.e("FCM", "Failed to process FCM data", e)
-            try { if (wakeLock.isHeld) wakeLock.release() } catch (ex: Exception) {}
         }
     }
 }
-

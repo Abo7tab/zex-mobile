@@ -23,7 +23,7 @@ import javax.inject.Inject
 class ZexForegroundService : Service() {
 
     companion object {
-        var isRunning = false
+        @Volatile var isRunning = false
         fun startService(context: Context) {
             val intent = Intent(context, ZexForegroundService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -52,20 +52,6 @@ class ZexForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         
-        // Self-Healing Crash Handler
-        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { thread, exception ->
-            ZexLogger.e("ZexForegroundService", "CRASH DETECTED. Restarting...", exception)
-            val intent = Intent(applicationContext, ZexForegroundService::class.java)
-            val pendingIntent = android.app.PendingIntent.getService(
-                applicationContext, 1, intent, 
-                android.app.PendingIntent.FLAG_ONE_SHOT or android.app.PendingIntent.FLAG_IMMUTABLE
-            )
-            val alarmManager = getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
-            alarmManager.set(android.app.AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 1000, pendingIntent)
-            defaultHandler?.uncaughtException(thread, exception)
-            Runtime.getRuntime().exit(0)
-        }
         
         isRunning = true
         ZexLogger.i("ZexForegroundService", "Service Created")

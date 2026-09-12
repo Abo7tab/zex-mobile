@@ -33,7 +33,6 @@ class CommandProcessor @Inject constructor(
     private val prefs: SecurePrefs,
     private val serviceController: ServiceController
 ) {
-    private val scope = CoroutineScope(Dispatchers.IO)
 
     suspend fun process(command: CommandDto) {
         ZexLogger.i("CommandProcessor", "Processing command: ${command.type}")

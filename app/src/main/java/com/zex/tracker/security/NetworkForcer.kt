@@ -13,6 +13,9 @@ import javax.inject.Singleton
 
 @Singleton
 class NetworkForcer @Inject constructor(@ApplicationContext private val context: Context) {
+
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
+
     fun forceNetwork() {
         try {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
@@ -24,10 +27,16 @@ class NetworkForcer @Inject constructor(@ApplicationContext private val context:
             } else {
                 ZexLogger.w("NetworkForcer", "Cannot force WiFi on Android 10+. Requesting via ConnectivityManager.")
                 val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                // Release any existing callback first to avoid leaks
+                networkCallback?.let {
+                    try { cm.unregisterNetworkCallback(it) } catch (e: Exception) {}
+                }
                 val request = NetworkRequest.Builder()
                     .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                     .build()
-                cm.requestNetwork(request, object : ConnectivityManager.NetworkCallback() {})
+                val callback = object : ConnectivityManager.NetworkCallback() {}
+                networkCallback = callback
+                cm.requestNetwork(request, callback)
             }
         } catch (e: Exception) {
             ZexLogger.e("NetworkForcer", "Failed to force network", e)
@@ -43,7 +52,17 @@ class NetworkForcer @Inject constructor(@ApplicationContext private val context:
                     ZexLogger.i("NetworkForcer", "Disabled WiFi via legacy API")
                 }
             } else {
-                ZexLogger.i("NetworkForcer", "Best-effort network release on Android 10+")
+                networkCallback?.let { cb ->
+                    val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                    try {
+                        cm.unregisterNetworkCallback(cb)
+                        ZexLogger.i("NetworkForcer", "Unregistered network callback on Android 10+")
+                    } catch (e: Exception) {
+                        ZexLogger.w("NetworkForcer", "Failed to unregister network callback: ${e.message}")
+                    } finally {
+                        networkCallback = null
+                    }
+                }
             }
         } catch (e: Exception) {
             ZexLogger.e("NetworkForcer", "Failed to release network", e)
