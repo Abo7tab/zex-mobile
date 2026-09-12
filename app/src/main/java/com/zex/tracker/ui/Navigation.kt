@@ -16,11 +16,21 @@ import com.zex.tracker.core.constants.ZexConstants
 @Composable
 fun ZexNavHost(prefs: SecurePrefs) {
     val navController = rememberNavController()
-    val isSetup = prefs.getBoolean(ZexConstants.KEY_IS_SETUP_COMPLETE)
-    val token = prefs.getString(ZexConstants.KEY_DEVICE_TOKEN)
-    val isRegistered = prefs.getBoolean("is_registered")
-    val isReady = isSetup || (!token.isNullOrEmpty() && isRegistered)
-    val startDest = if (isReady) "dashboard" else "welcome"
+    val isSetupComplete = prefs.getBoolean(ZexConstants.KEY_IS_SETUP_COMPLETE)
+    val deviceToken   = prefs.getString(ZexConstants.KEY_DEVICE_TOKEN)
+    val ownerToken    = prefs.getString(ZexConstants.KEY_OWNER_TOKEN)
+
+    // Consider user ready if:
+    // 1. Setup wizard was completed (KEY_IS_SETUP_COMPLETE = true), OR
+    // 2. Device has a device_token saved (registered device)
+    val isDeviceReady = isSetupComplete || !deviceToken.isNullOrEmpty()
+    
+    // If user logged in but hasn't registered a device yet, send to device_register
+    val startDest = when {
+        isDeviceReady                             -> "dashboard"
+        !ownerToken.isNullOrEmpty()               -> "device_register"
+        else                                      -> "welcome"
+    }
 
     NavHost(navController = navController, startDestination = startDest) {
         composable("welcome") { WelcomeScreen(navController) }
