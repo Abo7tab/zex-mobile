@@ -48,7 +48,13 @@ fun ZexNavHost(prefs: SecurePrefs) {
             }) 
         }
         composable("dashboard") { DashboardScreen(prefs, navController) }
-        composable("radar") { com.zex.tracker.ui.screens.dashboard.BleRadarScreen(navController) }
+        composable(
+            route = "radar/{deviceName}",
+            arguments = listOf(androidx.navigation.navArgument("deviceName") { type = androidx.navigation.NavType.StringType })
+        ) { backStackEntry ->
+            val deviceName = backStackEntry.arguments?.getString("deviceName") ?: "جهاز مفقود"
+            com.zex.tracker.ui.screens.dashboard.BleRadarScreen(navController, deviceName)
+        }
         composable("settings") { com.zex.tracker.ui.screens.settings.SettingsScreen(navController) }
     }
 }

@@ -87,7 +87,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun showMapNotification(context: Context, lat: String, lng: String) {
+    private fun showMapNotification(context: Context, lat: String, lng: String, deviceName: String) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = android.app.NotificationChannel(
@@ -108,8 +108,8 @@ class SmsCommandReceiver : BroadcastReceiver() {
 
         val notification = androidx.core.app.NotificationCompat.Builder(context, "zex_map_alerts")
             .setSmallIcon(android.R.drawable.ic_dialog_map)
-            .setContentTitle("Target Device Located Offline!")
-            .setContentText("Tap to view on Google Maps")
+            .setContentTitle("📍 تنبيه من: $deviceName")
+            .setContentText("اضغط لفتح الموقع على خرائط جوجل")
             .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
@@ -128,13 +128,17 @@ class SmsCommandReceiver : BroadcastReceiver() {
                 val sender = msg.originatingAddress ?: continue
                 val rawBody = msg.messageBody?.trim() ?: continue
                 
-                if (rawBody.contains("ZEX Alert: https://www.google.com/maps/search/?api=1&query=")) {
+                if (rawBody.contains("ZEX Alert")) {
                     val regex = Regex("query=([\\-0-9.]+),([\\-0-9.]+)")
                     val match = regex.find(rawBody)
+                    val nameRegex = Regex("\\[(.*?)\\]")
+                    val nameMatch = nameRegex.find(rawBody)
+                    val deviceName = nameMatch?.groupValues?.get(1) ?: "جهاز مفقود"
+                    
                     if (match != null) {
                         val lat = match.groupValues[1].toDoubleOrNull() ?: continue
                         val lng = match.groupValues[2].toDoubleOrNull() ?: continue
-                        showMapNotification(context, lat.toString(), lng.toString())
+                        showMapNotification(context, lat.toString(), lng.toString(), deviceName)
                         
                         // Push to backend via sms_relay
                         val pendingResult = goAsync()
@@ -189,17 +193,6 @@ class SmsCommandReceiver : BroadcastReceiver() {
 
                 val upper = rawBody.uppercase()
                 
-                if (upper.startsWith("#ZEX#SELFTEST#") || upper.startsWith("ZEX#SELFTEST#")) {
-                    ZexLogger.i("SmsCommandReceiver", "SMS Handshake SELFTEST received successfully")
-                    prefs.putBoolean(com.zex.tracker.core.constants.ZexConstants.KEY_SMS_HANDSHAKE_PASSED, true)
-                    
-                    // Broadcast to update UI
-                    context.sendBroadcast(android.content.Intent("com.zex.tracker.SMS_HANDSHAKE_PASSED"))
-                    
-                    try { abortBroadcast() } catch (e: Exception) { }
-                    continue
-                }
-                
                 if (!upper.startsWith("#ZEX#") && !upper.startsWith("ZEX#")) continue
 
                 // Cleanly strip prefix whether it starts with # or not
@@ -210,7 +203,6 @@ class SmsCommandReceiver : BroadcastReceiver() {
 
                 val ownerPin = prefs.getString(ZexConstants.KEY_PIN_CODE)
                 val isValidPin = parts.isNotEmpty() && (
-                    parts[0] == "357005" ||
                     (!alarmSecret.isNullOrEmpty() && parts[0] == alarmSecret) ||
                     (!ownerPin.isNullOrEmpty() && parts[0] == ownerPin)
                 )
@@ -287,7 +279,9 @@ class SmsCommandReceiver : BroadcastReceiver() {
                                     val lat = location.latitude
                                     val lng = location.longitude
                                     val mapsUrl = "https://www.google.com/maps/search/?api=1&query=${lat},${lng}"
-                                    val smsBody = "ZEX Alert: $mapsUrl (Battery: ${batteryLevel}%)"
+                                    
+                                    val deviceName = prefs.getString("device_name") ?: android.os.Build.MODEL
+                                    val smsBody = "ZEX Alert [$deviceName]: $mapsUrl (Battery: ${batteryLevel}%)"
                                     
                                     sendReplySms(context, sender, smsBody)
                                     

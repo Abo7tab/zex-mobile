@@ -118,8 +118,6 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
             
             val currentDevice = devices.find { it.device_uid == uid }
             
-            SmsHandshakeCard(viewModel, currentDevice?.phone_number)
-
             // 1. Current Device Card
             Card(
                 shape = RoundedCornerShape(16.dp),
@@ -164,7 +162,8 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
                     Text("البحث عن الأجهزة القريبة غير المتصلة بالإنترنت عبر البلوتوث.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 12.dp))
                     Button(
                         onClick = {
-                            navController.navigate("radar")
+                            val targetName = selectedTargetDevice?.device_name ?: "الجهاز المفقود"
+                            navController.navigate("radar/${Uri.encode(targetName)}")
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
@@ -196,7 +195,7 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
                                 onValueChange = {},
                                 readOnly = true,
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().menuAnchor(),
                                 label = { Text("أجهزتك المسجلة") }
                             )
                             ExposedDropdownMenu(
@@ -237,7 +236,7 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
                             onValueChange = {},
                             readOnly = true,
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = commandExpanded) },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
                             label = { Text("اختر الأمر") }
                         )
                         ExposedDropdownMenu(
@@ -268,7 +267,7 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
                                 onValueChange = {},
                                 readOnly = true,
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = simExpanded) },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().menuAnchor(),
                                 label = { Text("الشريحة المرسلة") }
                             )
                             ExposedDropdownMenu(
@@ -386,71 +385,4 @@ fun AutoStartWarning() {
 }
 
 
-@Composable
-fun SmsHandshakeCard(viewModel: DashboardViewModel, currentDevicePhone: String?) {
-    val isPassed by viewModel.isSmsHandshakePassed.collectAsState()
-    val errorMsg by viewModel.smsHandshakeError.collectAsState()
-    val context = LocalContext.current
-
-    DisposableEffect(Unit) {
-        val receiver = object : android.content.BroadcastReceiver() {
-            override fun onReceive(context: android.content.Context?, intent: Intent?) {
-                viewModel.refreshHandshakeStatus()
-            }
-        }
-        val filter = android.content.IntentFilter("com.zex.tracker.SMS_HANDSHAKE_PASSED")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(receiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            context.registerReceiver(receiver, filter)
-        }
-        onDispose {
-            context.unregisterReceiver(receiver)
-        }
-    }
-
-    LaunchedEffect(currentDevicePhone, isPassed) {
-        if (!isPassed && currentDevicePhone?.isNotBlank() == true) {
-            viewModel.startSmsHandshake(currentDevicePhone)
-        }
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isPassed) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.errorContainer
-        )
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = if (isPassed) "حالة الـ SMS (ممتاز)" else "اختبار اتصال الـ SMS",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = if (isPassed) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onErrorContainer
-            )
-            Spacer(Modifier.height(8.dp))
-            if (isPassed) {
-                Text(
-                    "✅ تم التحقق من سلامة إرسال واستقبال الـ SMS بنجاح على هذا الهاتف.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer
-                )
-            } else {
-                Text(
-                    if (errorMsg != null) "❌ فشل الاختبار: $errorMsg" else "⏳ جاري إجراء اختبار المصافحة الذاتي للـ SMS...",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
-                Spacer(Modifier.height(8.dp))
-                Button(
-                    onClick = { viewModel.startSmsHandshake(currentDevicePhone) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text("إعادة الاختبار يدوياً")
-                }
-            }
-        }
-    }
-}
 

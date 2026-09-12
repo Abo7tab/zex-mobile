@@ -24,7 +24,7 @@ import kotlin.math.sin
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BleRadarScreen(navController: NavController) {
+fun BleRadarScreen(navController: NavController, deviceName: String = "الجهاز المفقود") {
     var isScanning by remember { mutableStateOf(true) }
     
     val transition = rememberInfiniteTransition()
@@ -49,7 +49,7 @@ fun BleRadarScreen(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("رادار الأوفلاين (BLE Mesh)") },
+                title = { Text("بحث عن: $deviceName") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -71,7 +71,7 @@ fun BleRadarScreen(navController: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text("جاري المسح الميداني...", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleLarge)
+            Text("جاري البحث عن $deviceName ميدانياً...", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(32.dp))
 
             Box(
