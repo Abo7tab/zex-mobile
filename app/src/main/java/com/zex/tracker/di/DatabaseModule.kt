@@ -16,13 +16,19 @@ import javax.inject.Singleton
 object DatabaseModule {
     @Provides
     @Singleton
-    fun provideDatabase(@ApplicationContext context: Context): ZexDatabase {
-        val prefs = com.zex.tracker.data.local.prefs.SecurePrefs(context)
+    fun provideDatabase(@ApplicationContext context: Context, prefs: com.zex.tracker.data.local.prefs.SecurePrefs): ZexDatabase {
         var dbKey = prefs.getString("db_encryption_key")
         if (dbKey.isNullOrEmpty()) {
             dbKey = java.util.UUID.randomUUID().toString()
             prefs.putString("db_encryption_key", dbKey)
         }
+        
+        try {
+            net.sqlcipher.database.SQLiteDatabase.loadLibs(context)
+        } catch (e: Exception) {
+            com.zex.tracker.core.logging.ZexLogger.e("DatabaseModule", "Failed to load SQLCipher libs", e)
+        }
+        
         val factory = net.sqlcipher.database.SupportFactory(dbKey.toByteArray())
 
         return Room.databaseBuilder(context, ZexDatabase::class.java, "zex_secure.db")
