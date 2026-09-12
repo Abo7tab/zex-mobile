@@ -24,8 +24,14 @@ class SecurePrefs @Inject constructor(@ApplicationContext private val context: C
                 try {
                     _prefs = createEncryptedPrefs(context)
                 } catch (e: Exception) {
-                    ZexLogger.e("SecurePrefs", "Failed to init EncryptedSharedPreferences. Aborting for security.", e)
-                    throw RuntimeException("Strict security policy: Failed to initialize EncryptedSharedPreferences.", e)
+                    ZexLogger.e("SecurePrefs", "Failed to init EncryptedSharedPreferences. Attempting self-healing.", e)
+                    try {
+                        context.deleteSharedPreferences(ZexConstants.PREFS_NAME)
+                        _prefs = createEncryptedPrefs(context)
+                    } catch (e2: Exception) {
+                        ZexLogger.e("SecurePrefs", "Self-healing failed. Falling back to plain prefs.", e2)
+                        _prefs = context.getSharedPreferences(ZexConstants.FALLBACK_PREFS_NAME, Context.MODE_PRIVATE)
+                    }
                 }
                 return _prefs!!
             }
