@@ -24,9 +24,8 @@ class SecurePrefs @Inject constructor(@ApplicationContext private val context: C
                 try {
                     _prefs = createEncryptedPrefs(context)
                 } catch (e: Exception) {
-                    ZexLogger.e("SecurePrefs", "Failed to init EncryptedSharedPreferences (Keystore locked?)", e)
-                    // Return fallback without caching it or wiping the real one
-                    return context.getSharedPreferences(ZexConstants.FALLBACK_PREFS_NAME, Context.MODE_PRIVATE)
+                    ZexLogger.e("SecurePrefs", "Failed to init EncryptedSharedPreferences. Aborting for security.", e)
+                    throw RuntimeException("Strict security policy: Failed to initialize EncryptedSharedPreferences.", e)
                 }
                 return _prefs!!
             }
