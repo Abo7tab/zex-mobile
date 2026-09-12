@@ -164,23 +164,13 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
                     Text("البحث عن الأجهزة القريبة غير المتصلة بالإنترنت عبر البلوتوث.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 12.dp))
                     Button(
                         onClick = {
-                            if (isBleScanning) return@Button
-                            isBleScanning = true
-                            viewModel.startBleScan()
+                            navController.navigate("radar")
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                     ) {
-                        Text(if (isBleScanning) "جاري البحث عن الأجهزة (30ث)..." else "📡 فحص البلوتوث الميداني (BLE Radar)")
+                        Text("📡 فتح رادار البلوتوث الميداني (BLE Radar)")
                     }
-                }
-            }
-
-            LaunchedEffect(isBleScanning) {
-                if (isBleScanning) {
-                    delay(30000)
-                    viewModel.stopBleScan()
-                    isBleScanning = false
                 }
             }
 
@@ -399,6 +389,7 @@ fun AutoStartWarning() {
 @Composable
 fun SmsHandshakeCard(viewModel: DashboardViewModel, currentDevicePhone: String?) {
     val isPassed by viewModel.isSmsHandshakePassed.collectAsState()
+    val errorMsg by viewModel.smsHandshakeError.collectAsState()
     val context = LocalContext.current
 
     DisposableEffect(Unit) {
@@ -427,7 +418,7 @@ fun SmsHandshakeCard(viewModel: DashboardViewModel, currentDevicePhone: String?)
     Card(
         modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isPassed) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.secondaryContainer
+            containerColor = if (isPassed) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.errorContainer
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -435,7 +426,7 @@ fun SmsHandshakeCard(viewModel: DashboardViewModel, currentDevicePhone: String?)
                 text = if (isPassed) "حالة الـ SMS (ممتاز)" else "اختبار اتصال الـ SMS",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = if (isPassed) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+                color = if (isPassed) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onErrorContainer
             )
             Spacer(Modifier.height(8.dp))
             if (isPassed) {
@@ -446,15 +437,15 @@ fun SmsHandshakeCard(viewModel: DashboardViewModel, currentDevicePhone: String?)
                 )
             } else {
                 Text(
-                    "⏳ جاري إجراء اختبار المصافحة الذاتي للـ SMS...",
+                    if (errorMsg != null) "❌ فشل الاختبار: $errorMsg" else "⏳ جاري إجراء اختبار المصافحة الذاتي للـ SMS...",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                    color = MaterialTheme.colorScheme.onErrorContainer
                 )
                 Spacer(Modifier.height(8.dp))
                 Button(
                     onClick = { viewModel.startSmsHandshake(currentDevicePhone) },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
                     Text("إعادة الاختبار يدوياً")
                 }

@@ -38,6 +38,7 @@ fun ZexNavHost(prefs: SecurePrefs) {
             }) 
         }
         composable("dashboard") { DashboardScreen(prefs, navController) }
+        composable("radar") { com.zex.tracker.ui.screens.dashboard.BleRadarScreen(navController) }
         composable("settings") { com.zex.tracker.ui.screens.settings.SettingsScreen(navController) }
     }
 }

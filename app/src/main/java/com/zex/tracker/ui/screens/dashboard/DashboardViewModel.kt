@@ -29,13 +29,18 @@ class DashboardViewModel @Inject constructor(
     private val _isSmsHandshakePassed = MutableStateFlow(prefs.getBoolean(ZexConstants.KEY_SMS_HANDSHAKE_PASSED, false))
     val isSmsHandshakePassed: StateFlow<Boolean> = _isSmsHandshakePassed
 
+    private val _smsHandshakeError = MutableStateFlow(prefs.getString("sms_handshake_error"))
+    val smsHandshakeError: StateFlow<String?> = _smsHandshakeError
+
     fun refreshHandshakeStatus() {
         _isSmsHandshakePassed.value = prefs.getBoolean(ZexConstants.KEY_SMS_HANDSHAKE_PASSED, false)
+        _smsHandshakeError.value = prefs.getString("sms_handshake_error")
     }
 
     fun startSmsHandshake(phoneNumber: String?) {
         if (!_isSmsHandshakePassed.value) {
             smsHandshakeManager.startHandshake(phoneNumber)
+            _smsHandshakeError.value = prefs.getString("sms_handshake_error")
         }
     }
 

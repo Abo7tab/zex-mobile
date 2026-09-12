@@ -16,7 +16,6 @@ import javax.inject.Singleton
 
 @Singleton
 class ScreamManager @Inject constructor(@ApplicationContext private val context: Context) {
-    private var mediaPlayer: MediaPlayer? = null
     private val vibrator: Vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         val vm = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
         vm.defaultVibrator
@@ -26,17 +25,7 @@ class ScreamManager @Inject constructor(@ApplicationContext private val context:
 
     fun startScream() {
         try {
-            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-            audioManager.setStreamVolume(AudioManager.STREAM_ALARM, audioManager.getStreamMaxVolume(AudioManager.STREAM_ALARM), 0)
-
-            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            mediaPlayer = MediaPlayer().apply {
-                setDataSource(context, uri)
-                setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build())
-                isLooping = true
-                prepare()
-                start()
-            }
+            com.zex.tracker.utils.AudioPlayerHelper.playScream(context)
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 1000, 1000), 0))
@@ -51,9 +40,7 @@ class ScreamManager @Inject constructor(@ApplicationContext private val context:
 
     fun stopScream() {
         try {
-            mediaPlayer?.stop()
-            mediaPlayer?.release()
-            mediaPlayer = null
+            com.zex.tracker.utils.AudioPlayerHelper.stopScream()
             vibrator.cancel()
             ZexLogger.i("ScreamManager", "Scream stopped")
         } catch (e: Exception) {

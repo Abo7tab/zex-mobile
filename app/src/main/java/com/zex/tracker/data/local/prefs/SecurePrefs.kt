@@ -11,22 +11,26 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class SecurePrefs @Inject constructor(@ApplicationContext context: Context) {
+class SecurePrefs @Inject constructor(@ApplicationContext private val context: Context) {
 
-    private val prefs: SharedPreferences = try {
-        createEncryptedPrefs(context)
-    } catch (e: Exception) {
-        ZexLogger.e("SecurePrefs", "Failed to init EncryptedSharedPreferences. Wiping and retrying.", e)
-        try {
-            // Delete corrupt preferences file to resolve potential MasterKey conflicts
-            context.deleteSharedPreferences(ZexConstants.PREFS_NAME)
-            // Retry
-            createEncryptedPrefs(context)
-        } catch (e2: Exception) {
-            ZexLogger.e("SecurePrefs", "FATAL: Could not create EncryptedSharedPreferences after wipe.", e2)
-            throw RuntimeException("Fatal Error: EncryptedSharedPreferences initialization failed", e2)
+    @Volatile
+    private var _prefs: SharedPreferences? = null
+
+    private val prefs: SharedPreferences
+        get() {
+            _prefs?.let { return it }
+            synchronized(this) {
+                _prefs?.let { return it }
+                try {
+                    _prefs = createEncryptedPrefs(context)
+                } catch (e: Exception) {
+                    ZexLogger.e("SecurePrefs", "Failed to init EncryptedSharedPreferences (Keystore locked?)", e)
+                    // Return fallback without caching it or wiping the real one
+                    return context.getSharedPreferences(ZexConstants.FALLBACK_PREFS_NAME, Context.MODE_PRIVATE)
+                }
+                return _prefs!!
+            }
         }
-    }
 
     private fun createEncryptedPrefs(context: Context): SharedPreferences {
         val masterKey = MasterKey.Builder(context)

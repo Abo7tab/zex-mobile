@@ -96,7 +96,7 @@
         <activity android:name=".ui.screens.scream.ScreamActivity"
                   android:exported="false"
                   android:theme="@style/Theme.Zex"
-                  android:launchMode="singleTop"
+                  android:launchMode="singleInstance"
                   android:showOnLockScreen="true" />
         
         <activity android:name=".ui.screens.lock.LockActivity"

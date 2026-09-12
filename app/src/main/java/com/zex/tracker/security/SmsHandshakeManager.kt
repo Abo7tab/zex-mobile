@@ -1,4 +1,4 @@
-﻿package com.zex.tracker.security
+package com.zex.tracker.security
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -24,6 +24,8 @@ class SmsHandshakeManager @Inject constructor(
         val targetNumber = devicePhoneNumber?.takeIf { it.isNotBlank() } ?: return
         val timestamp = System.currentTimeMillis()
         val testMessage = "#ZEX#SELFTEST#$timestamp"
+        
+        prefs.putString("sms_handshake_error", null)
         
         try {
             val subscriptionManager = context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as SubscriptionManager
@@ -55,6 +57,7 @@ class SmsHandshakeManager @Inject constructor(
             
         } catch (e: Exception) {
             ZexLogger.e("SmsHandshake", "Handshake initiation failed", e)
+            prefs.putString("sms_handshake_error", e.localizedMessage ?: "Failed to initiate SMS")
         }
     }
 }

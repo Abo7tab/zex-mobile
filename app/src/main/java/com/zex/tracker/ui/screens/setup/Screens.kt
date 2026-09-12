@@ -119,13 +119,35 @@ fun DeviceRegisterScreen(navController: NavController, viewModel: SetupViewModel
 @Composable
 fun PermissionsScreen(navController: NavController) {
     val context = LocalContext.current
-    var isGranted by remember { mutableStateOf(false) }
-    
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
-        val fineLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        if (fineLocation) {
-            isGranted = true
+    var isStandardGranted by remember { mutableStateOf(false) }
+    var isOverlayGranted by remember { mutableStateOf(false) }
+
+    val checkPermissions = {
+        val fineLoc = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val sms = ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
+        
+        var ble = true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ble = ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED &&
+                  ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
         }
+        
+        isStandardGranted = fineLoc && sms && ble
+        isOverlayGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            android.provider.Settings.canDrawOverlays(context)
+        } else {
+            true
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        checkPermissions()
+    }
+
+    // A lifecycle observer could be added to re-check when returning from settings, but simple buttons work too
+
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
+        checkPermissions()
     }
 
     Scaffold { padding ->
@@ -133,12 +155,13 @@ fun PermissionsScreen(navController: NavController) {
             Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("الصلاحيات المطلوبة لتأمين الهاتف", style = MaterialTheme.typography.headlineMedium)
-                        if (isGranted) Icon(Icons.Default.CheckCircle, contentDescription = "Granted", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 8.dp))
+                        Text("الصلاحيات المطلوبة للحماية", style = MaterialTheme.typography.headlineMedium)
+                        if (isStandardGranted && isOverlayGranted) Icon(Icons.Default.CheckCircle, contentDescription = "Granted", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 8.dp))
                     }
-                    Text("يرجى منح صلاحيات الموقع والرسائل القصيرة وصلاحية البلوتوث للتتبع الأوفلاين (BLE Mesh) للمتابعة.", modifier = Modifier.padding(vertical = 8.dp))
+                    Text("نظام ZEX يحتاج لصلاحيات الموقع، الرسائل، البلوتوث (للرادار)، والظهور فوق التطبيقات (لشاشة القفل المستعصية) للعمل بكفاءة.", modifier = Modifier.padding(vertical = 8.dp))
                     Spacer(Modifier.height(16.dp))
-                    PrimaryButton("منح الصلاحيات", onClick = { 
+                    
+                    PrimaryButton(if (isStandardGranted) "✅ الصلاحيات الأساسية مكتملة" else "1. منح الصلاحيات الأساسية", onClick = { 
                         val perms = mutableListOf(
                             Manifest.permission.ACCESS_FINE_LOCATION,
                             Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -159,10 +182,31 @@ fun PermissionsScreen(navController: NavController) {
                         }
                         launcher.launch(perms.toTypedArray())
                     })
+                    
+                    Spacer(Modifier.height(8.dp))
+                    
+                    Button(onClick = {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            val intent = android.content.Intent(
+                                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                android.net.Uri.parse("package:${context.packageName}")
+                            )
+                            context.startActivity(intent)
+                        }
+                    }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = if (isOverlayGranted) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary)) {
+                        Text(if (isOverlayGranted) "✅ صلاحية القفل مكتملة" else "2. منح صلاحية القفل (العرض فوق التطبيقات)")
+                    }
+                    
+                    Spacer(Modifier.height(8.dp))
+                    
+                    Button(onClick = { checkPermissions() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.outlinedButtonColors()) {
+                        Text("تحديث حالة الصلاحيات")
+                    }
+
                     Spacer(Modifier.height(16.dp))
                     Button(
                         onClick = { navController.navigate("device_admin") },
-                        enabled = isGranted,
+                        enabled = isStandardGranted && isOverlayGranted,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("متابعة")
