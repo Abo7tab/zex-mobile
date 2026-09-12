@@ -343,13 +343,12 @@ fun DeviceAdminScreen(navController: NavController, onFinish: () -> Unit) {
             Spacer(Modifier.height(16.dp))
             Button(
                 onClick = { 
-                    com.zex.tracker.service.ZexForegroundService.startService(context)
-                    navController.navigate("dashboard") 
+                    navController.navigate("security_guide") 
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text("إنهاء التهيئة وبدء الحماية", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                Text("التالي: إعدادات الأمان والحماية 🛡️", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
             }
         }
     }

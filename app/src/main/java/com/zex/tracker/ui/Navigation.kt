@@ -40,12 +40,11 @@ fun ZexNavHost(prefs: SecurePrefs) {
         composable("device_admin") { 
             val context = androidx.compose.ui.platform.LocalContext.current
             DeviceAdminScreen(navController, onFinish = {
-                prefs.putBoolean(ZexConstants.KEY_IS_SETUP_COMPLETE, true)
-                com.zex.tracker.service.ZexForegroundService.startService(context)
-                navController.navigate("dashboard") {
-                    popUpTo(0)
-                }
+                navController.navigate("security_guide")
             }) 
+        }
+        composable("security_guide") {
+            com.zex.tracker.ui.screens.setup.SecurityGuideScreen(navController, prefs)
         }
         composable("dashboard") { DashboardScreen(prefs, navController) }
         composable(
