@@ -27,6 +27,13 @@ class HourlyAlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         ZexLogger.i("HourlyAlarmReceiver", "Waking up to perform search mode check")
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        val wakeLock = powerManager.newWakeLock(
+            android.os.PowerManager.PARTIAL_WAKE_LOCK,
+            "ZEX:HourlyAlarmWakeLock"
+        )
+        wakeLock.acquire(60000L) // 1 minute timeout
+
         val pendingResult = goAsync()
         
         CoroutineScope(Dispatchers.IO).launch {
@@ -63,6 +70,9 @@ class HourlyAlarmReceiver : BroadcastReceiver() {
                 ZexLogger.e("HourlyAlarmReceiver", "Failed search check", e)
             } finally {
                 scheduler.scheduleHourlyChecks() // reschedule next alarm
+                try {
+                    if (wakeLock.isHeld) wakeLock.release()
+                } catch (e: Exception) {}
                 pendingResult.finish()
             }
         }

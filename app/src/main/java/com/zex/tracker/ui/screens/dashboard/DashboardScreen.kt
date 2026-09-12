@@ -1,4 +1,4 @@
-﻿package com.zex.tracker.ui.screens.dashboard
+package com.zex.tracker.ui.screens.dashboard
 
 import android.Manifest
 import android.content.Intent
@@ -113,6 +113,9 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             
+            BatteryOptimizationWarning()
+            AutoStartWarning()
+
             // 1. Current Device Card
             val currentDevice = devices.find { it.device_uid == uid }
             Card(
@@ -325,6 +328,64 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
                     ) {
                         Text("إرسال أمر SMS طوارئ")
                     }
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+fun BatteryOptimizationWarning() {
+    val context = LocalContext.current
+    val powerManager = context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+    val isIgnoring = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+        powerManager.isIgnoringBatteryOptimizations(context.packageName)
+    } else true
+
+    if (!isIgnoring) {
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("تنبيه خطير: تحسين البطارية", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                Spacer(Modifier.height(8.dp))
+                Text("نظام أندرويد قد يقتل التطبيق في الخلفية ويوقف تتبع اللوكيشن. يرجى إعفاء التطبيق من قيود البطارية.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                Spacer(Modifier.height(8.dp))
+                Button(onClick = {
+                    try {
+                        val intent = android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                        intent.data = android.net.Uri.parse("package:${context.packageName}")
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "لا يمكن فتح الإعدادات تلقائياً", Toast.LENGTH_SHORT).show()
+                    }
+                }) {
+                    Text("إعفاء من القيود")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AutoStartWarning() {
+    val context = LocalContext.current
+    if (com.zex.tracker.utils.AutoStartUtils.isAutoStartRestrictiveDevice()) {
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("التشغيل التلقائي مطلوب", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                Spacer(Modifier.height(8.dp))
+                Text("لضمان عمل التتبع بعد إعادة تشغيل الهاتف، يرجى تفعيل (التشغيل التلقائي) للتطبيق في الإعدادات.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                Spacer(Modifier.height(8.dp))
+                Button(onClick = {
+                    com.zex.tracker.utils.AutoStartUtils.openAutoStartSettings(context)
+                }) {
+                    Text("إعدادات التشغيل التلقائي")
                 }
             }
         }
