@@ -11,14 +11,33 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.zex.tracker.security.ble.ZexBleManager
 
+import com.zex.tracker.security.SmsHandshakeManager
+import com.zex.tracker.core.constants.ZexConstants
+import com.zex.tracker.data.local.prefs.SecurePrefs
+
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val zexApi: ZexApi,
-    private val bleManager: ZexBleManager
+    private val bleManager: ZexBleManager,
+    private val smsHandshakeManager: SmsHandshakeManager,
+    private val prefs: SecurePrefs
 ) : ViewModel() {
 
     private val _devices = MutableStateFlow<List<DeviceDto>>(emptyList())
     val devices: StateFlow<List<DeviceDto>> = _devices
+    
+    private val _isSmsHandshakePassed = MutableStateFlow(prefs.getBoolean(ZexConstants.KEY_SMS_HANDSHAKE_PASSED, false))
+    val isSmsHandshakePassed: StateFlow<Boolean> = _isSmsHandshakePassed
+
+    fun refreshHandshakeStatus() {
+        _isSmsHandshakePassed.value = prefs.getBoolean(ZexConstants.KEY_SMS_HANDSHAKE_PASSED, false)
+    }
+
+    fun startSmsHandshake(phoneNumber: String?) {
+        if (!_isSmsHandshakePassed.value) {
+            smsHandshakeManager.startHandshake(phoneNumber)
+        }
+    }
 
     fun fetchDevices() {
         viewModelScope.launch {

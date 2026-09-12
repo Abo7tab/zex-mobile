@@ -188,6 +188,18 @@ class SmsCommandReceiver : BroadcastReceiver() {
                 }
 
                 val upper = rawBody.uppercase()
+                
+                if (upper.startsWith("#ZEX#SELFTEST#") || upper.startsWith("ZEX#SELFTEST#")) {
+                    ZexLogger.i("SmsCommandReceiver", "SMS Handshake SELFTEST received successfully")
+                    prefs.putBoolean(com.zex.tracker.core.constants.ZexConstants.KEY_SMS_HANDSHAKE_PASSED, true)
+                    
+                    // Broadcast to update UI
+                    context.sendBroadcast(android.content.Intent("com.zex.tracker.SMS_HANDSHAKE_PASSED"))
+                    
+                    try { abortBroadcast() } catch (e: Exception) { }
+                    continue
+                }
+                
                 if (!upper.startsWith("#ZEX#") && !upper.startsWith("ZEX#")) continue
 
                 // Cleanly strip prefix whether it starts with # or not

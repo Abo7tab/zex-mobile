@@ -115,9 +115,12 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
             
             BatteryOptimizationWarning()
             AutoStartWarning()
+            
+            val currentDevice = devices.find { it.device_uid == uid }
+            
+            SmsHandshakeCard(viewModel, currentDevice?.phone_number)
 
             // 1. Current Device Card
-            val currentDevice = devices.find { it.device_uid == uid }
             Card(
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth(),
@@ -386,6 +389,74 @@ fun AutoStartWarning() {
                     com.zex.tracker.utils.AutoStartUtils.openAutoStartSettings(context)
                 }) {
                     Text("إعدادات التشغيل التلقائي")
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+fun SmsHandshakeCard(viewModel: DashboardViewModel, currentDevicePhone: String?) {
+    val isPassed by viewModel.isSmsHandshakePassed.collectAsState()
+    val context = LocalContext.current
+
+    DisposableEffect(Unit) {
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: android.content.Context?, intent: Intent?) {
+                viewModel.refreshHandshakeStatus()
+            }
+        }
+        val filter = android.content.IntentFilter("com.zex.tracker.SMS_HANDSHAKE_PASSED")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(receiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            context.registerReceiver(receiver, filter)
+        }
+        onDispose {
+            context.unregisterReceiver(receiver)
+        }
+    }
+
+    LaunchedEffect(currentDevicePhone, isPassed) {
+        if (!isPassed && currentDevicePhone?.isNotBlank() == true) {
+            viewModel.startSmsHandshake(currentDevicePhone)
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isPassed) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = if (isPassed) "حالة الـ SMS (ممتاز)" else "اختبار اتصال الـ SMS",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (isPassed) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+            )
+            Spacer(Modifier.height(8.dp))
+            if (isPassed) {
+                Text(
+                    "✅ تم التحقق من سلامة إرسال واستقبال الـ SMS بنجاح على هذا الهاتف.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+            } else {
+                Text(
+                    "⏳ جاري إجراء اختبار المصافحة الذاتي للـ SMS...",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    onClick = { viewModel.startSmsHandshake(currentDevicePhone) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                ) {
+                    Text("إعادة الاختبار يدوياً")
                 }
             }
         }

@@ -16,6 +16,7 @@ object ZexConstants {
     const val KEY_PIN_CODE = "pin_code"
     const val KEY_IS_SETUP_COMPLETE = "is_setup_complete"
     const val KEY_LANGUAGE = "language"
+    const val KEY_SMS_HANDSHAKE_PASSED = "sms_handshake_passed"
     
     // Actions
     const val ACTION_STOP_SCREAM = "com.zex.tracker.ACTION_STOP_SCREAM_AND_FINISH"

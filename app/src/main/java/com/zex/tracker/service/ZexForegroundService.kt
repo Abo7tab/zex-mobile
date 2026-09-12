@@ -73,7 +73,6 @@ class ZexForegroundService : Service() {
         val powerManager = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
         wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "ZEX:ForegroundWakeLock").apply {
             setReferenceCounted(false)
-            acquire()
         }
         
         startForeground(1001, createNotification())
@@ -88,8 +87,6 @@ class ZexForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         ZexLogger.i("ZexForegroundService", "onStartCommand")
-        
-        wakeLock?.acquire()
         
         // Update notification
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -115,7 +112,16 @@ class ZexForegroundService : Service() {
         if (ServiceController.isTracking || ServiceController.isSearching || ServiceController.isStolen) {
             val interval = ServiceController.trackingInterval.coerceAtLeast(10000L)
             locationTracker.startContinuous(interval) { loc ->
-                scope.launch { deviceRepo.sendLocation(loc) }
+                scope.launch {
+                    try {
+                        wakeLock?.acquire(60000L) // 1 minute timeout
+                        deviceRepo.sendLocation(loc)
+                    } finally {
+                        try {
+                            if (wakeLock?.isHeld == true) wakeLock?.release()
+                        } catch (e: Exception) {}
+                    }
+                }
             }
         } else {
             locationTracker.stopContinuous()
