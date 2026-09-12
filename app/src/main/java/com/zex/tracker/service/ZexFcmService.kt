@@ -31,23 +31,34 @@ class ZexFcmService : FirebaseMessagingService() {
         super.onMessageReceived(message)
         ZexLogger.i("FCM", "Received FCM Message")
         
+        val powerManager = getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+        val wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "ZEX:FCMWakeLock")
+        
         try {
-            val powerManager = getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
-            val wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "ZEX:FCMWakeLock")
             wakeLock.acquire(15000L) // 15 seconds to ensure processing completes
 
             val data = message.data
-            val cmdId = data["id"]?.toIntOrNull() ?: return
-            val typeStr = data["type"] ?: return
-            val type = CommandType.valueOf(typeStr)
+            val cmdId = data["id"]?.toIntOrNull()
+            val typeStr = data["type"]
             
+            if (cmdId == null || typeStr == null) {
+                try { if (wakeLock.isHeld) wakeLock.release() } catch (e: Exception) {}
+                return
+            }
+            
+            val type = CommandType.valueOf(typeStr)
             val cmd = com.zex.tracker.data.remote.dto.CommandDto(cmdId, type.name, data, "PENDING")
+            
             CoroutineScope(Dispatchers.IO).launch { 
-                commandProcessor.process(cmd)
-                if (wakeLock.isHeld) wakeLock.release()
+                try {
+                    commandProcessor.process(cmd)
+                } finally {
+                    try { if (wakeLock.isHeld) wakeLock.release() } catch (e: Exception) {}
+                }
             }
         } catch (e: Exception) {
             ZexLogger.e("FCM", "Failed to process FCM data", e)
+            try { if (wakeLock.isHeld) wakeLock.release() } catch (ex: Exception) {}
         }
     }
 }
