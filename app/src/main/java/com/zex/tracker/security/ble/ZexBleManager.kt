@@ -15,6 +15,7 @@ import kotlinx.coroutines.*
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.asSharedFlow
 
 @Singleton
 @SuppressLint("MissingPermission")
@@ -29,6 +30,9 @@ class ZexBleManager @Inject constructor(
         val ZEX_SERVICE_UUID: ParcelUuid = ParcelUuid(UUID.fromString("0000ZEX1-0000-1000-8000-00805F9B34FB".replace("ZEX1", "23E1")))
         const val TAG = "ZexBleManager"
     }
+
+    private val _foundDevices = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 10)
+    val foundDevices = _foundDevices.asSharedFlow()
 
     private val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
     private val bluetoothAdapter: BluetoothAdapter? = bluetoothManager?.adapter
@@ -55,6 +59,7 @@ class ZexBleManager @Inject constructor(
             result?.scanRecord?.serviceData?.get(ZEX_SERVICE_UUID)?.let { data ->
                 val deviceHash = String(data)
                 ZexLogger.i(TAG, "Found ZEX Device via BLE Mesh: $deviceHash")
+                _foundDevices.tryEmit(deviceHash)
                 reportDeviceFound(deviceHash)
             }
         }

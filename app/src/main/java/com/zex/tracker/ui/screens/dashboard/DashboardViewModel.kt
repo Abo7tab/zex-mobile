@@ -23,6 +23,8 @@ class DashboardViewModel @Inject constructor(
 
     private val _devices = MutableStateFlow<List<DeviceDto>>(emptyList())
     val devices: StateFlow<List<DeviceDto>> = _devices
+    
+    val bleFoundDevices = bleManager.foundDevices
 
     fun fetchDevices() {
         viewModelScope.launch {

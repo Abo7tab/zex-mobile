@@ -21,12 +21,21 @@ import androidx.navigation.NavController
 import kotlinx.coroutines.delay
 import kotlin.math.cos
 import kotlin.math.sin
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BleRadarScreen(navController: NavController, deviceName: String = "الجهاز المفقود") {
+fun BleRadarScreen(navController: NavController, deviceName: String = "الجهاز المفقود", viewModel: DashboardViewModel = hiltViewModel()) {
     var isScanning by remember { mutableStateOf(true) }
+    val foundDeviceHash by viewModel.bleFoundDevices.collectAsState(initial = null)
     
+    LaunchedEffect(Unit) {
+        viewModel.startBleScan()
+    }
+    DisposableEffect(Unit) {
+        onDispose { viewModel.stopBleScan() }
+    }
+
     val transition = rememberInfiniteTransition()
     val rotation by transition.animateFloat(
         initialValue = 0f,
@@ -36,15 +45,6 @@ fun BleRadarScreen(navController: NavController, deviceName: String = "الجه�
             repeatMode = RepeatMode.Restart
         )
     )
-
-    // Dummy devices for visualization
-    val blips = remember {
-        listOf(
-            Offset(0.3f, 0.4f),
-            Offset(-0.5f, 0.2f),
-            Offset(0.1f, -0.6f)
-        )
-    }
 
     Scaffold(
         topBar = {
@@ -71,7 +71,23 @@ fun BleRadarScreen(navController: NavController, deviceName: String = "الجه�
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text("جاري البحث عن $deviceName ميدانياً...", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleLarge)
+            if (foundDeviceHash != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF4CAF50))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("🎯 تم العثور على الجهاز!", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("تم التقاط إشارة بلوتوث من $deviceName. تم إرسال الموقع الحالي للوحة التحكم المركزية.", color = Color.White, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    }
+                }
+            } else {
+                Text("جاري البحث عن $deviceName ميدانياً...", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleLarge)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("تحرك في الأماكن التي تشك فيها لكي يلتقط الرادار إشارة البلوتوث.", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f), style = MaterialTheme.typography.bodyMedium)
+            }
+            
             Spacer(modifier = Modifier.height(32.dp))
 
             Box(
@@ -109,14 +125,13 @@ fun BleRadarScreen(navController: NavController, deviceName: String = "الجه�
                         )
                     }
 
-                    // Draw Blips (in a real app, calculate relative to real distance and angle)
-                    blips.forEach { blip ->
+                    if (foundDeviceHash != null) {
                         val blipCenter = Offset(
-                            center.x + blip.x * radius,
-                            center.y + blip.y * radius
+                            center.x + 0.3f * radius,
+                            center.y + -0.4f * radius
                         )
-                        drawCircle(Color(0xFF64B5F6), 8f, blipCenter)
-                        drawCircle(Color.White, 3f, blipCenter)
+                        drawCircle(Color(0xFF4CAF50), 12f, blipCenter)
+                        drawCircle(Color.White, 4f, blipCenter)
                     }
                 }
             }

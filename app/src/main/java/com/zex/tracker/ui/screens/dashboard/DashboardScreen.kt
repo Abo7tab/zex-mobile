@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -114,7 +115,7 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
         ) {
             
             BatteryOptimizationWarning()
-            AutoStartWarning()
+            AutoStartWarning(prefs)
             
             val currentDevice = devices.find { it.device_uid == uid }
             
@@ -261,9 +262,19 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
                             expanded = simExpanded,
                             onExpandedChange = { simExpanded = !simExpanded }
                         ) {
-                            val selectedSimName = sims.find { it.subscriptionId == selectedSimId }?.displayName ?: "اختر الشريحة"
+                            val selectedSim = sims.find { it.subscriptionId == selectedSimId }
+                            val subManager = context.getSystemService(android.telephony.SubscriptionManager::class.java)
+                            val selectedNumber = if (android.os.Build.VERSION.SDK_INT >= 33 && selectedSim != null) {
+                                subManager.getPhoneNumber(selectedSimId)
+                            } else {
+                                @Suppress("DEPRECATION")
+                                selectedSim?.number
+                            }
+                            val selectedSimName = selectedSim?.displayName?.toString() ?: "اختر الشريحة"
+                            val selectedText = if (!selectedNumber.isNullOrBlank()) "$selectedSimName ($selectedNumber)" else selectedSimName
+
                             OutlinedTextField(
-                                value = selectedSimName.toString(),
+                                value = selectedText,
                                 onValueChange = {},
                                 readOnly = true,
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = simExpanded) },
@@ -275,8 +286,16 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
                                 onDismissRequest = { simExpanded = false }
                             ) {
                                 sims.forEach { sim ->
+                                    val number = if (android.os.Build.VERSION.SDK_INT >= 33) {
+                                        subManager.getPhoneNumber(sim.subscriptionId)
+                                    } else {
+                                        @Suppress("DEPRECATION")
+                                        sim.number
+                                    }
+                                    val name = sim.displayName?.toString() ?: "شريحة ${sim.subscriptionId}"
+                                    val text = if (!number.isNullOrBlank()) "$name ($number)" else name
                                     DropdownMenuItem(
-                                        text = { Text(sim.displayName?.toString() ?: "شريحة ${sim.subscriptionId}") },
+                                        text = { Text(text) },
                                         onClick = {
                                             selectedSimId = sim.subscriptionId
                                             simExpanded = false
@@ -362,17 +381,31 @@ fun BatteryOptimizationWarning() {
 }
 
 @Composable
-fun AutoStartWarning() {
+fun AutoStartWarning(prefs: SecurePrefs) {
     val context = LocalContext.current
-    if (com.zex.tracker.utils.AutoStartUtils.isAutoStartRestrictiveDevice()) {
+    var isDismissed by remember { mutableStateOf(prefs.getBoolean("auto_start_dismissed", false)) }
+
+    if (!isDismissed && com.zex.tracker.utils.AutoStartUtils.isAutoStartRestrictiveDevice()) {
         Card(
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("التشغيل التلقائي مطلوب", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("التشغيل التلقائي مطلوب", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                    IconButton(onClick = {
+                        prefs.putBoolean("auto_start_dismissed", true)
+                        isDismissed = true
+                    }) {
+                        Icon(Icons.Default.Close, contentDescription = "Dismiss", tint = MaterialTheme.colorScheme.onErrorContainer)
+                    }
+                }
                 Spacer(Modifier.height(8.dp))
-                Text("لضمان عمل التتبع بعد إعادة تشغيل الهاتف، يرجى تفعيل (التشغيل التلقائي) للتطبيق في الإعدادات.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                Text("لضمان عمل التتبع بعد إعادة تشغيل الهاتف، يرجى تفعيل (التشغيل التلقائي) للتطبيق في الإعدادات. إذا كنت قد قمت بتفعيله بالفعل، يمكنك تجاهل هذه الرسالة.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
                 Spacer(Modifier.height(8.dp))
                 Button(onClick = {
                     com.zex.tracker.utils.AutoStartUtils.openAutoStartSettings(context)
