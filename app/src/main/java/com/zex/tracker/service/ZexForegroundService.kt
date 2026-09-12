@@ -2,6 +2,7 @@ package com.zex.tracker.service
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -69,6 +70,7 @@ class ZexForegroundService : Service() {
         // Initial boot/start check
         scope.launch { searchModeManager.checkOwnerSearching() }
         startPeriodicHeartbeat()
+        startHealthMonitor()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -161,6 +163,59 @@ class ZexForegroundService : Service() {
             .setSmallIcon(R.mipmap.ic_launcher)
             .setOngoing(true)
             .build()
+    }
+
+    private fun startHealthMonitor() {
+        scope.launch {
+            while (isActive) {
+                checkHealthAndNotify()
+                kotlinx.coroutines.delay(30_000) // Check every 30 seconds
+            }
+        }
+    }
+
+    private fun checkHealthAndNotify() {
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val network = connectivityManager.activeNetwork
+        val caps = connectivityManager.getNetworkCapabilities(network)
+        val hasInternet = caps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+
+        val locationManager = getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
+        val hasGps = locationManager.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER)
+
+        val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as android.bluetooth.BluetoothManager
+        val hasBluetooth = bluetoothManager.adapter?.isEnabled == true
+
+        val warnings = mutableListOf<String>()
+        if (!hasInternet) warnings.add("الإنترنت معطل! اضغط لتشغيله لحماية الجهاز من الضياع.")
+        if (!hasGps) warnings.add("الموقع (GPS) معطل! شغّله فوراً.")
+        if (!hasBluetooth) warnings.add("البلوتوث معطل! شغّله لتفعيل الرادار الميداني.")
+
+        val notifManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        
+        if (warnings.isNotEmpty()) {
+            val intent = Intent(android.provider.Settings.ACTION_SETTINGS)
+            val pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+
+            val builder = androidx.core.app.NotificationCompat.Builder(this, "zex_health_channel")
+                .setSmallIcon(android.R.drawable.stat_sys_warning)
+                .setContentTitle("⚠️ ZEX Military: حماية معطلة!")
+                .setContentText(warnings.joinToString(" | "))
+                .setStyle(androidx.core.app.NotificationCompat.BigTextStyle().bigText(warnings.joinToString("\n")))
+                .setPriority(androidx.core.app.NotificationCompat.PRIORITY_MAX)
+                .setOngoing(true) // Sticky
+                .setContentIntent(pendingIntent)
+                
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel("zex_health_channel", "Health Warnings", NotificationManager.IMPORTANCE_HIGH).apply {
+                    description = "تحذيرات أمنية هامة"
+                }
+                notifManager.createNotificationChannel(channel)
+            }
+            notifManager.notify(1002, builder.build())
+        } else {
+            notifManager.cancel(1002)
+        }
     }
 
     override fun onDestroy() {

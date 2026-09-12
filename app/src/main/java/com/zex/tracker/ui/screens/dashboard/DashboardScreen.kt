@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -94,7 +95,7 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("لوحة تحكم المالك", fontWeight = FontWeight.Bold) },
+                title = { Text("ZEX Military", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary, titleContentColor = MaterialTheme.colorScheme.onPrimary),
                 actions = {
                     IconButton(onClick = { navController.navigate("settings") }) {
@@ -114,6 +115,7 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             
+            SecurityStatusMonitor()
             BatteryOptimizationWarning()
             AutoStartWarning(prefs)
             
@@ -411,6 +413,79 @@ fun AutoStartWarning(prefs: SecurePrefs) {
                     com.zex.tracker.utils.AutoStartUtils.openAutoStartSettings(context)
                 }) {
                     Text("إعدادات التشغيل التلقائي")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SecurityStatusMonitor() {
+    val context = LocalContext.current
+    var hasInternet by remember { mutableStateOf(true) }
+    var hasGps by remember { mutableStateOf(true) }
+    var hasBluetooth by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        while(true) {
+            val connectivityManager = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val network = connectivityManager.activeNetwork
+            val caps = connectivityManager.getNetworkCapabilities(network)
+            hasInternet = caps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+
+            val locationManager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
+            hasGps = locationManager.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER)
+
+            val bluetoothManager = context.getSystemService(android.content.Context.BLUETOOTH_SERVICE) as android.bluetooth.BluetoothManager
+            hasBluetooth = bluetoothManager.adapter?.isEnabled == true
+
+            kotlinx.coroutines.delay(3000)
+        }
+    }
+
+    if (!hasInternet) {
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable { context.startActivity(android.content.Intent(android.provider.Settings.ACTION_WIFI_SETTINGS)) },
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+        ) {
+            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Close, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
+                Spacer(Modifier.width(8.dp))
+                Column {
+                    Text("⚠️ ZEX Military: الإنترنت معطل!", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                    Text("اضغط لتشغيله لحماية الجهاز من الضياع.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                }
+            }
+        }
+    }
+
+    if (!hasGps) {
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable { context.startActivity(android.content.Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)) },
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+        ) {
+            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Close, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
+                Spacer(Modifier.width(8.dp))
+                Column {
+                    Text("⚠️ ZEX Military: الموقع (GPS) معطل!", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                    Text("شغّله فوراً ليتمكن النظام من التتبع.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                }
+            }
+        }
+    }
+
+    if (!hasBluetooth) {
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp).clickable { context.startActivity(android.content.Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS)) },
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+        ) {
+            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Close, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
+                Spacer(Modifier.width(8.dp))
+                Column {
+                    Text("⚠️ ZEX Military: البلوتوث معطل!", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                    Text("شغّله لتفعيل الرادار الميداني.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
                 }
             }
         }
