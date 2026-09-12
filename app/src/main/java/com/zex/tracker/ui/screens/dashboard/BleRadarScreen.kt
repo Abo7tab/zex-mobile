@@ -1,4 +1,4 @@
-﻿package com.zex.tracker.ui.screens.dashboard
+package com.zex.tracker.ui.screens.dashboard
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
@@ -67,17 +67,17 @@ fun BleRadarScreen(navController: NavController) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(Color(0xFF0A0A0A)), // Very dark background for radar
+                .background(MaterialTheme.colorScheme.background),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text("جاري المسح الميداني...", color = Color.White, style = MaterialTheme.typography.titleLarge)
+            Text("جاري المسح الميداني...", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(32.dp))
 
             Box(
                 modifier = Modifier
                     .size(300.dp)
-                    .background(Color.Black, CircleShape),
+                    .background(Color(0xFF0F172A), CircleShape), // Dark radar circle
                 contentAlignment = Alignment.Center
             ) {
                 Canvas(modifier = Modifier.fillMaxSize()) {

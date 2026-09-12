@@ -158,8 +158,9 @@ fun PermissionsScreen(navController: NavController) {
                         Text("الصلاحيات المطلوبة للحماية", style = MaterialTheme.typography.headlineMedium)
                         if (isStandardGranted && isOverlayGranted) Icon(Icons.Default.CheckCircle, contentDescription = "Granted", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 8.dp))
                     }
-                    Text("نظام ZEX يحتاج لصلاحيات الموقع، الرسائل، البلوتوث (للرادار)، والظهور فوق التطبيقات (لشاشة القفل المستعصية) للعمل بكفاءة.", modifier = Modifier.padding(vertical = 8.dp))
-                    Spacer(Modifier.height(16.dp))
+                    Text("نظام ZEX يحتاج لصلاحيات الموقع، الرسائل، البلوتوث (للرادار)، والظهور فوق التطبيقات للعمل بكفاءة.", modifier = Modifier.padding(vertical = 8.dp))
+                    Text("⚠️ هام: عند ظهور نافذة الموقع، اختر (السماح طوال الوقت) لضمان حماية الهاتف عند إغلاق الشاشة.", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 8.dp))
+                    Spacer(Modifier.height(8.dp))
                     
                     PrimaryButton(if (isStandardGranted) "✅ الصلاحيات الأساسية مكتملة" else "1. منح الصلاحيات الأساسية", onClick = { 
                         val perms = mutableListOf(

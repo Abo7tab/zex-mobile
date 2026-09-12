@@ -98,14 +98,20 @@ class ZexForegroundService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        ZexLogger.w("ZexForegroundService", "Task removed by user. Scheduling instant restart...")
-        val restartIntent = Intent(applicationContext, ZexForegroundService::class.java)
-        val pendingIntent = android.app.PendingIntent.getService(
+        ZexLogger.w("ZexForegroundService", "Task removed. Scheduling instant restart...")
+        val restartIntent = Intent(applicationContext, com.zex.tracker.receiver.BootReceiver::class.java).apply {
+            action = "com.zex.tracker.RESTART_SERVICE"
+        }
+        val pendingIntent = android.app.PendingIntent.getBroadcast(
             applicationContext, 1, restartIntent, 
             android.app.PendingIntent.FLAG_ONE_SHOT or android.app.PendingIntent.FLAG_IMMUTABLE
         )
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
-        alarmManager.set(android.app.AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 1000, pendingIntent)
+        try {
+            alarmManager.setExactAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 1000, pendingIntent)
+        } catch (e: Exception) {
+            alarmManager.set(android.app.AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 1000, pendingIntent)
+        }
     }
 
     private fun manageTracking() {

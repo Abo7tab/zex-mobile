@@ -11,7 +11,11 @@ object AudioPlayerHelper {
     private var mediaPlayer: MediaPlayer? = null
 
     fun playScream(context: Context) {
-        stopScream() // Ensure no overlapping audio
+        if (mediaPlayer?.isPlaying == true) {
+            ZexLogger.i("AudioPlayerHelper", "Scream already playing. Ignoring start request.")
+            return
+        }
+        stopScream() // Ensure clean state
         
         try {
             val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
