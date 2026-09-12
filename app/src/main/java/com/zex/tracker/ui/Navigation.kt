@@ -17,7 +17,10 @@ import com.zex.tracker.core.constants.ZexConstants
 fun ZexNavHost(prefs: SecurePrefs) {
     val navController = rememberNavController()
     val isSetup = prefs.getBoolean(ZexConstants.KEY_IS_SETUP_COMPLETE)
-    val startDest = if (isSetup) "dashboard" else "welcome"
+    val token = prefs.getString(ZexConstants.KEY_DEVICE_TOKEN)
+    val isRegistered = prefs.getBoolean("is_registered")
+    val isReady = isSetup || (!token.isNullOrEmpty() && isRegistered)
+    val startDest = if (isReady) "dashboard" else "welcome"
 
     NavHost(navController = navController, startDestination = startDest) {
         composable("welcome") { WelcomeScreen(navController) }

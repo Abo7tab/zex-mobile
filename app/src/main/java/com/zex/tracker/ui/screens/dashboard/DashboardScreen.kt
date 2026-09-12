@@ -1,8 +1,13 @@
-package com.zex.tracker.ui.screens.dashboard
+﻿package com.zex.tracker.ui.screens.dashboard
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.telephony.SmsManager
+import android.telephony.SubscriptionInfo
+import android.telephony.SubscriptionManager
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -18,13 +23,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.zex.tracker.core.constants.ZexConstants
 import com.zex.tracker.data.local.prefs.SecurePrefs
 import com.zex.tracker.data.remote.dto.DeviceDto
 import com.zex.tracker.service.ZexForegroundService
-import com.zex.tracker.security.ble.ZexBleManager
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,9 +60,23 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
     var commandExpanded by remember { mutableStateOf(false) }
 
     var isBleScanning by remember { mutableStateOf(false) }
+    
+    var sims by remember { mutableStateOf<List<SubscriptionInfo>>(emptyList()) }
+    var selectedSimId by remember { mutableStateOf(-1) }
+    var simExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.fetchDevices()
+        try {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
+                val subManager = context.getSystemService(SubscriptionManager::class.java)
+                val activeSims = subManager.activeSubscriptionInfoList ?: emptyList()
+                sims = activeSims
+                if (activeSims.isNotEmpty()) {
+                    selectedSimId = activeSims[0].subscriptionId
+                }
+            }
+        } catch (e: Exception) {}
     }
 
     LaunchedEffect(devices) {
@@ -125,18 +144,30 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(24.dp))
             
-            Button(
-                onClick = {
-                    if (isBleScanning) return@Button
-                    isBleScanning = true
-                    viewModel.startBleScan()
-                },
+            // BLE Radar Card
+            Card(
+                shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
             ) {
-                Text(if (isBleScanning) "جاري البحث عن الأجهزة (30ث)..." else "📡 فحص البلوتوث الميداني (BLE Radar)")
+                Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("📡 رادار ZEX الميداني", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    Text("البحث عن الأجهزة القريبة غير المتصلة بالإنترنت عبر البلوتوث.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 12.dp))
+                    Button(
+                        onClick = {
+                            if (isBleScanning) return@Button
+                            isBleScanning = true
+                            viewModel.startBleScan()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                    ) {
+                        Text(if (isBleScanning) "جاري البحث عن الأجهزة (30ث)..." else "📡 فحص البلوتوث الميداني (BLE Radar)")
+                    }
+                }
             }
 
             LaunchedEffect(isBleScanning) {
@@ -156,7 +187,7 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("🎯 اختيار الجهاز المستهدف والتحكم عن بُعد", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("🎯 التحكم بالجهاز المستهدف", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(12.dp))
                     
                     if (devices.size > 1) {
@@ -169,7 +200,7 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
                                 onValueChange = {},
                                 readOnly = true,
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                                modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth(),
                                 label = { Text("أجهزتك المسجلة") }
                             )
                             ExposedDropdownMenu(
@@ -210,7 +241,7 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
                             onValueChange = {},
                             readOnly = true,
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = commandExpanded) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth(),
                             label = { Text("اختر الأمر") }
                         )
                         ExposedDropdownMenu(
@@ -229,6 +260,38 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
                         }
                     }
 
+                    if (sims.isNotEmpty()) {
+                        Spacer(Modifier.height(12.dp))
+                        ExposedDropdownMenuBox(
+                            expanded = simExpanded,
+                            onExpandedChange = { simExpanded = !simExpanded }
+                        ) {
+                            val selectedSimName = sims.find { it.subscriptionId == selectedSimId }?.displayName ?: "اختر الشريحة"
+                            OutlinedTextField(
+                                value = selectedSimName.toString(),
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = simExpanded) },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("الشريحة المرسلة") }
+                            )
+                            ExposedDropdownMenu(
+                                expanded = simExpanded,
+                                onDismissRequest = { simExpanded = false }
+                            ) {
+                                sims.forEach { sim ->
+                                    DropdownMenuItem(
+                                        text = { Text(sim.displayName?.toString() ?: "شريحة ${sim.subscriptionId}") },
+                                        onClick = {
+                                            selectedSimId = sim.subscriptionId
+                                            simExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     Spacer(Modifier.height(16.dp))
 
                     Button(
@@ -240,7 +303,13 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
                             if (cleanPhone.isNotBlank()) {
                                 val message = "#ZEX#357005#${selectedCommand.second}"
                                 try {
-                                    val smsManager = context.getSystemService(SmsManager::class.java)
+                                    val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                        if (selectedSimId != -1) context.getSystemService(SmsManager::class.java).createForSubscriptionId(selectedSimId)
+                                        else context.getSystemService(SmsManager::class.java)
+                                    } else {
+                                        if (selectedSimId != -1) SmsManager.getSmsManagerForSubscriptionId(selectedSimId)
+                                        else SmsManager.getDefault()
+                                    }
                                     smsManager.sendTextMessage(cleanPhone, null, message, null, null)
                                     Toast.makeText(context, "محاولة الإرسال في الخلفية تمت...", Toast.LENGTH_SHORT).show()
                                 } catch (e: Exception) {

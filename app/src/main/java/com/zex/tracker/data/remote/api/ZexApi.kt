@@ -41,6 +41,9 @@ interface ZexApi {
     @POST("devices/{device}/stop-scream")
     suspend fun stopScream(@Path("device") deviceId: Long, @Body payload: Map<String, String>): Response<Unit>
 
+    @POST("devices/local-stop-scream")
+    suspend fun localStopScream(@Body payload: Map<String, String>): Response<Unit>
+
     @POST("alerts")
     suspend fun sendAlert(@Body payload: AlertRequest): Response<Unit>
 

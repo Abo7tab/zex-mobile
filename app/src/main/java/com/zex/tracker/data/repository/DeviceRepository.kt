@@ -121,8 +121,7 @@ class DeviceRepository @Inject constructor(
     }
 
     suspend fun stopScream(alarmSecret: String): ApiResult<Unit> = safeApiCall {
-        val deviceId = prefs.getLong("device_numeric_id", 0L)
-        api.stopScream(deviceId, mapOf("alarm_secret" to alarmSecret))
+        api.localStopScream(mapOf("alarm_secret" to alarmSecret))
     }
 
     suspend fun sendAlert(payload: AlertRequest): ApiResult<Unit> = safeApiCall {

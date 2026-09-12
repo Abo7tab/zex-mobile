@@ -98,7 +98,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
             notificationManager.createNotificationChannel(channel)
         }
 
-        val mapIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://maps.google.com/?q=$lat,$lng")).apply {
+        val mapIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://www.google.com/maps/search/?api=1&query=$lat,$lng")).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
         val pendingIntent = android.app.PendingIntent.getActivity(
@@ -128,8 +128,8 @@ class SmsCommandReceiver : BroadcastReceiver() {
                 val sender = msg.originatingAddress ?: continue
                 val rawBody = msg.messageBody?.trim() ?: continue
                 
-                if (rawBody.contains("ZEX Alert: https://maps.google.com/?q=")) {
-                    val regex = Regex("q=([\\-0-9.]+),([\\-0-9.]+)")
+                if (rawBody.contains("ZEX Alert: https://www.google.com/maps/search/?api=1&query=")) {
+                    val regex = Regex("query=([\\-0-9.]+),([\\-0-9.]+)")
                     val match = regex.find(rawBody)
                     if (match != null) {
                         val lat = match.groupValues[1].toDoubleOrNull() ?: continue
@@ -274,7 +274,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
                                     val batteryLevel = BatteryUtils.getBatteryLevel(context)
                                     val lat = location.latitude
                                     val lng = location.longitude
-                                    val mapsUrl = "https://maps.google.com/?q=${lat},${lng}"
+                                    val mapsUrl = "https://www.google.com/maps/search/?api=1&query=${lat},${lng}"
                                     val smsBody = "ZEX Alert: $mapsUrl (Battery: ${batteryLevel}%)"
                                     
                                     sendReplySms(context, sender, smsBody)

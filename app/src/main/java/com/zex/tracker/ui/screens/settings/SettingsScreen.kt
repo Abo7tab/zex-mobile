@@ -61,9 +61,8 @@ fun SettingsScreen(
     ) { padding ->
         Column(modifier = Modifier.padding(padding).padding(16.dp)) {
             TabRow(selectedTabIndex = tab) {
-                Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("الملف الشخصي") })
-                Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("كلمة المرور") })
-                Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("رمز PIN") })
+                Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("تغيير كلمة المرور") })
+                Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("تغيير رمز PIN") })
             }
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -71,18 +70,6 @@ fun SettingsScreen(
             val isLoading = uiState is SettingsUiState.Loading
 
             if (tab == 0) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("الاسم") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("البريد الإلكتروني") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = { viewModel.updateProfile(name, email) }, 
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isLoading
-                ) {
-                    Text(if (isLoading) "جاري الحفظ..." else "حفظ التغييرات")
-                }
-            } else if (tab == 1) {
                 OutlinedTextField(value = currentPassword, onValueChange = { currentPassword = it }, label = { Text("كلمة المرور الحالية (مطلوبة)") }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation())
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(value = newPassword, onValueChange = { newPassword = it }, label = { Text("كلمة المرور الجديدة") }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation())
@@ -105,14 +92,14 @@ fun SettingsScreen(
             } else {
                 OutlinedTextField(value = currentPassword, onValueChange = { currentPassword = it }, label = { Text("كلمة المرور الحالية (مطلوبة للتحقق)") }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation())
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = pinCode, onValueChange = { pinCode = it }, label = { Text("رمز PIN (6 أرقام)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = pinCode, onValueChange = { if (it.length <= 6) pinCode = it.filter { c -> c.isDigit() } }, label = { Text("رمز PIN (6 أرقام)") }, modifier = Modifier.fillMaxWidth())
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = { 
                         viewModel.updateSecurity(currentPassword, "", "", pinCode) 
                     }, 
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !isLoading && currentPassword.isNotEmpty() && pinCode.isNotEmpty()
+                    enabled = !isLoading && currentPassword.isNotEmpty() && pinCode.length == 6
                 ) {
                     Text(if (isLoading) "جاري التحديث..." else "تحديث رمز PIN")
                 }
