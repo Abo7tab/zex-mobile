@@ -1,6 +1,5 @@
-﻿package com.zex.tracker.ui.screens.dashboard
+package com.zex.tracker.ui.screens.dashboard
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -8,19 +7,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,38 +18,34 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.graphics.SolidColor
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.math.pow
-import kotlin.math.roundToInt
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 data class RadarBlip(val hash: String, val rssi: Int, val timestamp: Long)
-
-val TacticalNavy = Color(0xFF0A0F16)
-val TacticalCard = Color(0xFF111827)
-val TacticalCyan = Color(0xFF00F0FF)
-val TacticalRed = Color(0xFFFF3366)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BleRadarScreen(navController: NavController, deviceName: String = "RMX2020", viewModel: DashboardViewModel = hiltViewModel()) {
     var isScanning by remember { mutableStateOf(true) }
     val blips = remember { mutableStateListOf<RadarBlip>() }
+    
+    val bgColor = Color(0xFFF8FAFC)
+    val cardColor = Color(0xFFFFFFFF)
+    val primaryColor = Color(0xFF2563EB)
+    val successColor = Color(0xFF16A34A)
+    val warningColor = Color(0xFFD97706)
+    val slate800 = Color(0xFF1E293B)
+    val slate400 = Color(0xFF94A3B8)
+    val slate200 = Color(0xFFE2E8F0)
     
     LaunchedEffect(Unit) {
         viewModel.startBleScan()
@@ -87,415 +73,316 @@ fun BleRadarScreen(navController: NavController, deviceName: String = "RMX2020",
         }
     }
 
-    val timeStr = remember {
-        val sdf = SimpleDateFormat("HH:mm:ss'Z'", Locale.US)
-        sdf.format(Date())
-    }
+    // Mock data for UI presentation if empty (per requirements to show the 2 nodes)
+    val displayBlips = if (blips.isEmpty()) listOf(
+        RadarBlip("FA53", -45, System.currentTimeMillis()),
+        RadarBlip("715E", -88, System.currentTimeMillis())
+    ) else blips.toList()
 
     Scaffold(
-        containerColor = TacticalNavy,
+        containerColor = bgColor,
         bottomBar = { TacticalBottomNavBar() }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
         ) {
-            // A) TOP C4ISR STATUS HEADER
-            TopStatusHeader(timeStr)
-
-            // B) RADAR CONFIGURATION BOX
-            RadarConfigBox(blips.size)
-            
-            // C) POLAR RADAR CANVAS
-            PolarRadarCanvas(blips)
-            
-            // D) SONAR AUDIO PING TRACKER
-            SonarAudioTracker(blips)
-            
-            // E) TARGETS & DETECTED DEVICES LIST
-            TargetsList(blips, deviceName, viewModel)
-            
-            // F) FOOTER ACTION BUTTONS
-            FooterActions()
-            
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-    }
-}
-
-@Composable
-fun TopStatusHeader(timeStr: String) {
-    Column(modifier = Modifier.padding(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(8.dp).background(TacticalCyan))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("SAT-COMM: LINKED // AES-256", color = Color.Gray, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("DEFCON 2", color = TacticalRed, fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, modifier = Modifier.background(TacticalRed.copy(alpha=0.2f)).padding(horizontal=2.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("// $timeStr", color = Color.Gray, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("ZEX // UNIT-01 • LAT 34.0522°N", color = TacticalCyan, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            Text("OVERVIEW", color = TacticalCyan, fontSize = 32.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
-            Row {
-                IconButton(onClick = {}, modifier = Modifier.border(1.dp, Color.Gray).size(40.dp)) {
-                    Icon(Icons.Filled.Warning, contentDescription = null, tint = Color.Gray)
+            // Top Bar
+            Row(
+                modifier = Modifier.fillMaxWidth().background(cardColor).padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = primaryColor.copy(alpha = 0.1f),
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(Icons.Default.Info, contentDescription = null, tint = primaryColor, modifier = Modifier.padding(10.dp))
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Tactical Radar", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = slate800)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Surface(shape = RoundedCornerShape(12.dp), color = successColor.copy(alpha = 0.3f)) {
+                                Text("SEC-4", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF065F46), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                            }
+                        }
+                        Text("ZEX C4ISR TACTICAL NODE", fontSize = 10.sp, color = slate400, letterSpacing = 1.sp)
+                    }
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                IconButton(onClick = {}, modifier = Modifier.background(TacticalCyan).size(40.dp)) {
-                    Icon(Icons.Filled.Person, contentDescription = null, tint = TacticalNavy)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun RadarConfigBox(deviceCount: Int) {
-    Box(modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth().border(1.dp, TacticalCyan.copy(alpha=0.3f)).background(TacticalCard).padding(12.dp)) {
-        Column {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.background(TacticalNavy).border(1.dp, TacticalCyan).padding(horizontal = 8.dp, vertical = 4.dp)) {
-                    Text("360° ACTV", color = Color.White, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-                }
-                Text("رادار المسح الميداني BLE // كشف الأجهزة دون اتصال", color = Color.White, fontSize = 12.sp, fontFamily = FontFamily.Monospace, textAlign = TextAlign.End)
-                Box(modifier = Modifier.size(8.dp).background(TacticalCyan))
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column {
-                    Text("حساسية الالتقاط:", color = Color.Gray, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-                    Text("-95 dBm // ULTRA", color = Color.White, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("حالة الرادار:", color = Color.Gray, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("مسح مستمر (360°)", color = Color.White, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = successColor.copy(alpha = 0.1f)
+                ) {
+                    Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(6.dp).background(successColor, RoundedCornerShape(50)))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Box(modifier = Modifier.size(6.dp).background(TacticalCyan))
+                        Text("LINK ACTIVE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = successColor)
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column {
-                    Text("الأجهزة المكتشفة:", color = Color.Gray, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-                    Row {
-                        Text(String.format("%02d", deviceCount), color = TacticalCyan, fontSize = 14.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                        Text(" وحدات", color = TacticalCyan, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
+
+            Divider(color = slate200.copy(alpha = 0.5f))
+
+            // Sub-Header
+            Row(
+                modifier = Modifier.fillMaxWidth().background(bgColor).padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { navController.navigateUp() }, modifier = Modifier.size(32.dp).background(slate200.copy(alpha = 0.5f), RoundedCornerShape(50))) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = slate800, modifier = Modifier.size(16.dp))
                     }
-                    if(deviceCount > 0) {
-                        Text("[LOCKED: 1]", color = TacticalCyan, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text("OFFLINE MESH RADAR", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = slate800, letterSpacing = 1.sp)
+                        Text("PHY: LE 2M Coded • 2.4 GHz ISM", fontSize = 10.sp, color = slate400)
                     }
                 }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("النطاق الترددي:", color = Color.Gray, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-                    Text("2.4 GHz BLE Mesh", color = Color.White, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
+                Surface(shape = RoundedCornerShape(16.dp), color = successColor.copy(alpha = 0.8f)) {
+                    Text("Scanning... (BLE 5.2)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                 }
             }
-        }
-    }
-}
 
-@Composable
-fun PolarRadarCanvas(blips: List<RadarBlip>) {
-    val transition = rememberInfiniteTransition()
-    val rotation by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(4000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        )
-    )
-
-    Column(modifier = Modifier.padding(16.dp).fillMaxWidth().background(TacticalCard).border(1.dp, TacticalCyan.copy(alpha=0.1f)).padding(16.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("REFRESH: 48 FPS // LOW_LAT", color = Color.Gray, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-            Text("RETICLE: POLAR_01", color = Color.Gray, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f), contentAlignment = Alignment.Center) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val center = Offset(size.width / 2, size.height / 2)
-                val maxRadius = size.width / 2f
-                
-                // Rings
-                val ringRadii = listOf(0.2f, 0.5f, 0.8f, 1.0f)
-                val ringLabels = listOf("5M", "15M", "30M")
-                
-                ringRadii.forEachIndexed { index, fraction ->
-                    drawCircle(TacticalCyan.copy(alpha = 0.2f), maxRadius * fraction, style = Stroke(1f))
-                    if (index < ringLabels.size) {
-                        // We would draw text here, but Canvas text requires TextMeasurer (Compose 1.3+).
-                        // I will skip canvas text and just draw UI elements if needed, or stick to rings.
-                    }
-                }
-                
-                // Crosshairs
-                drawLine(TacticalCyan.copy(alpha = 0.3f), Offset(center.x, 0f), Offset(center.x, size.height), strokeWidth = 1f)
-                drawLine(TacticalCyan.copy(alpha = 0.3f), Offset(0f, center.y), Offset(size.width, center.y), strokeWidth = 1f)
-                
-                // Degree marks
-                // Simplification for the sweep
-                rotate(rotation, center) {
-                    val sweepPath = Path().apply {
-                        moveTo(center.x, center.y)
-                        lineTo(center.x, 0f)
-                        arcTo(
-                            rect = androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height),
-                            startAngleDegrees = 270f,
-                            sweepAngleDegrees = 45f,
-                            forceMoveTo = false
-                        )
-                        close()
-                    }
-                    drawPath(sweepPath, Brush.sweepGradient(
-                        0.0f to Color.Transparent,
-                        0.7f to TacticalCyan.copy(alpha = 0.1f),
-                        0.99f to TacticalCyan.copy(alpha = 0.6f),
-                        1.0f to Color.Transparent,
-                        center = center
-                    ))
-                    drawLine(TacticalCyan, center, Offset(center.x, 0f), strokeWidth = 2f)
-                }
-                
-                // Blips
-                blips.forEachIndexed { index, blip ->
-                    val distanceMeters = 10.0.pow((-59 - blip.rssi) / 20.0)
-                    // clamp distance visually to 50 meters for max radius
-                    val distanceFraction = (distanceMeters / 50.0).toFloat().coerceIn(0.1f, 1f)
-                    val r = maxRadius * distanceFraction
-                    val angle = (Math.abs(blip.hash.hashCode()) % 360).toDouble()
-                    val bx = center.x + r * cos(Math.toRadians(angle)).toFloat()
-                    val by = center.y + r * sin(Math.toRadians(angle)).toFloat()
+            // Radar Canvas
+            Box(modifier = Modifier.fillMaxWidth().height(260.dp).background(cardColor).padding(vertical = 16.dp)) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val center = Offset(size.width / 2, size.height / 2)
+                    val maxRadius = size.height / 2.2f
                     
-                    val age = System.currentTimeMillis() - blip.timestamp
-                    val alpha = (1f - (age / 15000f)).coerceIn(0.2f, 1f)
+                    // Draw concentric circles
+                    drawCircle(color = primaryColor.copy(alpha = 0.05f), radius = maxRadius)
+                    drawCircle(color = primaryColor.copy(alpha = 0.1f), radius = maxRadius * 0.5f)
+                    drawCircle(color = primaryColor.copy(alpha = 0.2f), radius = maxRadius, style = Stroke(width = 1.dp.toPx()))
+                    drawCircle(color = primaryColor.copy(alpha = 0.3f), radius = maxRadius * 0.5f, style = Stroke(width = 1.dp.toPx()))
                     
-                    if (index == 0) { // Locked target mock
-                        drawRect(TacticalCyan, Offset(bx - 8f, by - 8f), androidx.compose.ui.geometry.Size(16f, 16f))
-                    } else if (index % 2 == 0) {
-                        drawRect(TacticalRed.copy(alpha=alpha), Offset(bx - 6f, by - 6f), androidx.compose.ui.geometry.Size(12f, 12f), style = Stroke(2f))
-                    } else {
-                        // Diamond
-                        val path = Path().apply {
-                            moveTo(bx, by - 8f)
-                            lineTo(bx + 8f, by)
-                            lineTo(bx, by + 8f)
-                            lineTo(bx - 8f, by)
-                            close()
-                        }
-                        drawPath(path, TacticalCyan.copy(alpha=alpha))
+                    drawLine(color = primaryColor.copy(alpha = 0.15f), start = Offset(center.x, 0f), end = Offset(center.x, size.height), strokeWidth = 1.dp.toPx())
+                    drawLine(color = primaryColor.copy(alpha = 0.15f), start = Offset(0f, center.y), end = Offset(size.width, center.y), strokeWidth = 1.dp.toPx())
+                    
+                    // Center node
+                    drawCircle(color = primaryColor, radius = 12.dp.toPx(), center = center)
+                    drawCircle(color = Color.White, radius = 4.dp.toPx(), center = center)
+                    
+                    // Discovered nodes
+                    displayBlips.forEachIndexed { index, blip ->
+                        val distanceRatio = if (blip.rssi > -50) 0.3f else if (blip.rssi > -80) 0.6f else 0.85f
+                        val angle = (index * 120 + 45) * (Math.PI / 180f)
+                        val r = maxRadius * distanceRatio
+                        val x = center.x + r * cos(angle).toFloat()
+                        val y = center.y + r * sin(angle).toFloat()
+                        val nodeColor = if (blip.rssi > -60) successColor else warningColor
+                        
+                        drawCircle(color = nodeColor, radius = 10.dp.toPx(), center = Offset(x, y))
                     }
                 }
                 
-                drawRect(TacticalCyan, Offset(center.x - 4f, center.y - 4f), androidx.compose.ui.geometry.Size(8f, 8f))
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(8.dp).background(TacticalCyan))
-            Text("أقرب هدف: 8.4 م | زاوية السمت: 048° شمال شرق", color = Color.Gray, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-        }
-    }
-}
-
-@Composable
-fun SonarAudioTracker(blips: List<RadarBlip>) {
-    val bestRssi = blips.maxOfOrNull { it.rssi } ?: -100
-    val percentage = ((bestRssi + 100) / 60f).coerceIn(0f, 1f) * 100f
-    
-    Box(modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth().border(1.dp, TacticalCyan.copy(alpha=0.3f)).background(TacticalCard).padding(16.dp)) {
-        Column {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.background(TacticalCyan).padding(horizontal = 8.dp, vertical = 4.dp)) {
-                    Text("مفعل", color = TacticalNavy, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("نبض صوتي تكتيكي عند الاقتراب", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    Text("Audio Ping Tracker (Sonar Modulation)", color = Color.Gray, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-                }
-                Icon(Icons.Filled.Notifications, contentDescription = null, tint = Color.White)
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("${bestRssi} dBm [${percentage.roundToInt()}%]", color = TacticalCyan, fontSize = 12.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                Text("مستوى استقرار الإشارة (RSSI // RMX2020):", color = Color.Gray, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                for (i in 0..9) {
-                    val isActive = i < (percentage / 10).toInt()
-                    Box(modifier = Modifier.weight(1f).height(12.dp).padding(horizontal = 2.dp).background(if (isActive) TacticalCyan else Color.DarkGray))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun TargetsList(blips: List<RadarBlip>, targetDevice: String, viewModel: DashboardViewModel) {
-    Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("COUNT: ${String.format("%02d", blips.size)} /\nSCAN", color = Color.Gray, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-            Text("قائمة الأجهزة والكواشف\nالمكتشفة", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.End)
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        blips.forEachIndexed { index, blip ->
-            val dist = 10.0.pow((-59 - blip.rssi) / 20.0)
-            val isTarget = index == 0 // Mocking first as target
-            val cardColor = if (isTarget) TacticalNavy else TacticalCard
-            val borderColor = if (isTarget) TacticalCyan else Color.Gray.copy(alpha=0.3f)
-            
-            Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp).border(1.dp, borderColor).background(cardColor).padding(12.dp)) {
-                Column {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Column {
-                            Text("${String.format("%.1f", dist)} متر", color = TacticalCyan, fontSize = 14.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                            Text("${blip.rssi} dBm", color = Color.Gray, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+                // Labels inside canvas box
+                Text("50m", fontSize = 10.sp, color = slate400, modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp))
+                Text("25m", fontSize = 10.sp, color = slate400, modifier = Modifier.align(Alignment.TopCenter).padding(top = 70.dp))
+                
+                // Top Tags
+                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).align(Alignment.TopCenter), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Surface(shape = RoundedCornerShape(12.dp), color = successColor.copy(alpha = 0.1f)) {
+                        Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(modifier = Modifier.size(6.dp).background(successColor, RoundedCornerShape(50)))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Beacon: ACTIVE", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = successColor)
                         }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (isTarget) {
-                                    Text("جهازك المستهدف", color = Color.White, fontSize = 10.sp, modifier = Modifier.background(TacticalRed).padding(horizontal = 4.dp, vertical = 2.dp))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(targetDevice, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                                } else {
-                                    Text("وحدة مقترنة", color = Color.Gray, fontSize = 10.sp)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Device ${blip.hash.take(4)}", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Surface(shape = RoundedCornerShape(12.dp), color = slate200.copy(alpha = 0.5f)) {
+                        Text("CH 37/38/39 Adv", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = slate800, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                    }
+                }
+                
+                // Footer
+                Row(modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Share, contentDescription = null, tint = primaryColor, modifier = Modifier.size(12.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Scanning Network: Tx +4dBm (~50m radius)", fontSize = 10.sp, color = slate800)
+                }
+            }
+
+            // List Header
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Discovered Nodes", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = slate800)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(shape = RoundedCornerShape(50), color = primaryColor.copy(alpha = 0.1f)) {
+                        Text("${displayBlips.size}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = primaryColor, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Refresh, contentDescription = null, tint = primaryColor, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Auto-mesh active", fontSize = 11.sp, color = primaryColor)
+                }
+            }
+
+            // Nodes List
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(displayBlips) { blip ->
+                    val isStrong = blip.rssi > -60
+                    val badgeColor = if (isStrong) successColor else warningColor
+                    val title = if (isStrong) "ZEX-${blip.hash.take(4)}" else "ZEX-${blip.hash.take(4)}"
+                    val subtitle = if (isStrong) "Redmi Note 8" else "Unregistered"
+                    val distance = if (isStrong) "~ 2.5 meters" else "~ 15.0 meters"
+                    val hopStatus = if (isStrong) "Direct Link (0 Hops)" else "Pending Key"
+                    
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = cardColor),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Row {
+                                    Surface(shape = RoundedCornerShape(20.dp), color = badgeColor.copy(alpha = 0.2f), modifier = Modifier.size(40.dp)) {
+                                        Icon(if (isStrong) Icons.Default.CheckCircle else Icons.Default.Info, contentDescription = null, tint = badgeColor, modifier = Modifier.padding(10.dp))
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = slate800)
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Surface(shape = RoundedCornerShape(6.dp), color = slate200.copy(alpha = 0.5f)) {
+                                                Text(subtitle, fontSize = 9.sp, color = slate800, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                            }
+                                        }
+                                        Text("Last Ping: 1s ago • ${if (isStrong) "Protocol: C-BLE v2" else "Unauthenticated Peer"}", fontSize = 11.sp, color = slate400)
+                                    }
+                                }
+                                Surface(shape = RoundedCornerShape(12.dp), color = badgeColor.copy(alpha = 0.2f)) {
+                                    Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        // signal icon replacement
+                                        Icon(Icons.Default.LocationOn, contentDescription = null, tint = badgeColor, modifier = Modifier.size(12.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("${blip.rssi} dBm", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = slate800)
+                                    }
                                 }
                             }
-                            Text("MAC: ${blip.hash.take(16)} // LE_CONN", color = Color.Gray, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    if (isTarget) {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Column {
-                                Text("تشفير الإشارة:", color = Color.Gray, fontSize = 10.sp)
-                                Text("UNENCRYPTED", color = Color.White, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            Row(modifier = Modifier.fillMaxWidth().background(bgColor, RoundedCornerShape(8.dp)).padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Row {
+                                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = primaryColor, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text("Est. Distance", fontSize = 9.sp, color = slate400)
+                                        Text(distance, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = slate800)
+                                    }
+                                }
+                                Row {
+                                    Icon(Icons.Default.Share, contentDescription = null, tint = if(isStrong) successColor else slate400, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text(if (isStrong) "Hop Status" else "Handshake", fontSize = 9.sp, color = slate400)
+                                        Text(hopStatus, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = slate800)
+                                    }
+                                }
                             }
-                            Column {
-                                Text("نوع الحزمة:", color = Color.Gray, fontSize = 10.sp)
-                                Text("ADV_IND", color = Color.White, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text("مستوى البطارية:", color = Color.Gray, fontSize = 10.sp)
-                                Text("41%", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Button(
-                                onClick = { },
-                                shape = CutCornerShape(4.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, TacticalCyan),
-                                modifier = Modifier.weight(1f).height(40.dp)
-                            ) {
-                                Text("تتبع بالسمت الحركي", color = TacticalCyan, fontSize = 12.sp)
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Button(
-                                onClick = { viewModel.pingDevice() },
-                                shape = CutCornerShape(4.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = TacticalCyan),
-                                modifier = Modifier.weight(1.5f).height(40.dp)
-                            ) {
-                                Text("إرسال نبضة صوتية / صفارة", color = TacticalNavy, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    } else {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("88%", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("الحالة التشغيلية: خامل في النطاق", color = Color.Gray, fontSize = 10.sp)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Box(modifier = Modifier.size(6.dp).background(TacticalCyan))
+                            
+                            Spacer(modifier = Modifier.height(12.dp))
+                            
+                            if (isStrong) {
+                                Button(
+                                    onClick = { },
+                                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = primaryColor),
+                                    shape = RoundedCornerShape(24.dp)
+                                ) {
+                                    Icon(Icons.Default.Notifications, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Ping Device (Play Sound)", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                }
+                            } else {
+                                OutlinedButton(
+                                    onClick = { },
+                                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = slate800),
+                                    shape = RoundedCornerShape(24.dp)
+                                ) {
+                                    Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Authenticate & Ping", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                }
                             }
                         }
                     }
                 }
             }
-        }
-    }
-}
 
-@Composable
-fun FooterActions() {
-    Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
-        Button(
-            onClick = { },
-            shape = CutCornerShape(8.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = TacticalCyan),
-            modifier = Modifier.fillMaxWidth().height(56.dp)
-        ) {
-            Text("إعادة معايرة المسح النبضي // RE-CALIBRATE SCAN", color = TacticalNavy, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        }
-        Spacer(modifier = Modifier.height(12.dp))
-        Button(
-            onClick = { },
-            shape = CutCornerShape(8.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color.Gray),
-            modifier = Modifier.fillMaxWidth().height(48.dp)
-        ) {
-            Icon(Icons.Filled.Share, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("تصدير خريطة الإشارات والمصفوفة الميدانية (CSV / KML)", color = Color.Gray, fontSize = 12.sp)
+            // Control Bar
+            Column(modifier = Modifier.fillMaxWidth().background(cardColor).padding(16.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(
+                        onClick = { },
+                        modifier = Modifier.weight(1f).height(40.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(containerColor = primaryColor.copy(alpha = 0.1f), contentColor = slate800, disabledContentColor = Color.Transparent)
+                    ) {
+                        Text("Export Log", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                    OutlinedButton(
+                        onClick = { },
+                        modifier = Modifier.weight(1f).height(40.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(containerColor = primaryColor.copy(alpha = 0.1f), contentColor = slate800, disabledContentColor = Color.Transparent)
+                    ) {
+                        Text("RSSI Filter", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = { isScanning = false },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFECDD3), contentColor = Color(0xFF9F1239)),
+                    shape = RoundedCornerShape(24.dp)
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("STOP SWEEP", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+                }
+            }
         }
     }
 }
 
 @Composable
 fun TacticalBottomNavBar() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFF06090E))
-            .border(1.dp, TacticalCyan.copy(alpha=0.1f))
-            .padding(vertical = 8.dp, horizontal = 16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    val items = listOf("Radar" to Icons.Default.Share, "Assets" to Icons.Default.Person, "Intel" to Icons.Default.Info, "Settings" to Icons.Default.Settings)
+    NavigationBar(
+        containerColor = Color.White,
+        tonalElevation = 8.dp
     ) {
-        NavBarItem("OVERVIEW", Icons.Outlined.Refresh, true)
-        NavBarItem("RADAR", Icons.Filled.LocationOn, false)
-        
-        // SOS Button
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .background(TacticalRed.copy(alpha=0.2f), shape = RoundedCornerShape(8.dp))
-                .border(1.dp, TacticalRed, shape = RoundedCornerShape(8.dp))
-                .clickable { },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Filled.Warning, contentDescription = "SOS", tint = TacticalRed)
+        items.forEachIndexed { index, pair ->
+            NavigationBarItem(
+                selected = index == 0,
+                onClick = { },
+                icon = { Icon(pair.second, contentDescription = pair.first) },
+                label = { Text(pair.first, fontSize = 10.sp) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = Color(0xFF2563EB),
+                    selectedTextColor = Color(0xFF2563EB),
+                    unselectedIconColor = Color(0xFF94A3B8),
+                    unselectedTextColor = Color(0xFF94A3B8),
+                    indicatorColor = Color.Transparent
+                )
+            )
         }
-        
-        NavBarItem("TARGETS", Icons.Outlined.Info, false)
-        NavBarItem("COMMS", Icons.Filled.Settings, false)
-    }
-}
-
-@Composable
-fun NavBarItem(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, isActive: Boolean) {
-    val color = if (isActive) TacticalCyan else Color.Gray
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { }) {
-        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(label, color = color, fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = if(isActive) FontWeight.Bold else FontWeight.Normal)
     }
 }

@@ -54,6 +54,6 @@ fun ZexNavHost(prefs: SecurePrefs) {
             val deviceName = backStackEntry.arguments?.getString("deviceName") ?: "جهاز مفقود"
             com.zex.tracker.ui.screens.dashboard.BleRadarScreen(navController, deviceName)
         }
-        composable("settings") { com.zex.tracker.ui.screens.settings.SettingsScreen(navController) }
+        composable("settings") { com.zex.tracker.ui.screens.settings.SettingsScreen(navController, prefs) }
     }
 }
