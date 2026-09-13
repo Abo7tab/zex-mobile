@@ -47,6 +47,7 @@ class MainActivity : ComponentActivity() {
             
             val workRequest = androidx.work.PeriodicWorkRequestBuilder<com.zex.tracker.service.ZexWatchdogWorker>(15, java.util.concurrent.TimeUnit.MINUTES)
                 .build()
+            com.zex.tracker.service.SystemHealthWorker.start(this)
             androidx.work.WorkManager.getInstance(this).enqueueUniquePeriodicWork(
                 "ZexWatchdogWorker",
                 androidx.work.ExistingPeriodicWorkPolicy.KEEP,
