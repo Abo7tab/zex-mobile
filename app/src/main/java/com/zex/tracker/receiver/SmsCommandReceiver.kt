@@ -42,11 +42,13 @@ class SmsCommandReceiver : BroadcastReceiver() {
     @Inject lateinit var deviceRepo: DeviceRepository
     @Inject lateinit var screamManager: com.zex.tracker.security.ScreamManager
 
+    
     private fun sendReplySms(context: Context, to: String, message: String) {
         try {
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED) {
                 val smsManager: SmsManager = try {
                     val subId = SubscriptionManager.getDefaultSmsSubscriptionId()
+                    ZexLogger.i("SmsCommandReceiver", "Dual-SIM check: Active Sub ID = $subId")
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         val baseSmsManager = context.getSystemService(SmsManager::class.java)
                         if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
@@ -72,12 +74,16 @@ class SmsCommandReceiver : BroadcastReceiver() {
                     SmsManager.getDefault()
                 }
                 
-                val sentPI = android.app.PendingIntent.getBroadcast(context, 0, android.content.Intent("SMS_SENT"), android.app.PendingIntent.FLAG_IMMUTABLE)
-                val deliveredPI = android.app.PendingIntent.getBroadcast(context, 0, android.content.Intent("SMS_DELIVERED"), android.app.PendingIntent.FLAG_IMMUTABLE)
+                val sentIntent = Intent("com.zex.tracker.SMS_SENT")
+                val deliveredIntent = Intent("com.zex.tracker.SMS_DELIVERED")
+                
+                val sentPI = android.app.PendingIntent.getBroadcast(context, 0, sentIntent, android.app.PendingIntent.FLAG_IMMUTABLE)
+                val deliveredPI = android.app.PendingIntent.getBroadcast(context, 0, deliveredIntent, android.app.PendingIntent.FLAG_IMMUTABLE)
                 
                 try {
                     smsManager.sendTextMessage(to, null, message, sentPI, deliveredPI)
                     ZexLogger.i("SmsCommandReceiver", "Dispatched SMS to $to. Awaiting carrier confirmation.")
+                    android.widget.Toast.makeText(context, "SMS Dispatched to $to", android.widget.Toast.LENGTH_SHORT).show()
                 } catch(e: Exception) {
                     ZexLogger.e("SmsCommandReceiver", "FATAL SMS DISPATCH ERROR", e)
                 }

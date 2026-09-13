@@ -4,11 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.zex.tracker.ui.screens.setup.WelcomeScreen
-import com.zex.tracker.ui.screens.setup.AuthScreen
-import com.zex.tracker.ui.screens.setup.DeviceRegisterScreen
-import com.zex.tracker.ui.screens.setup.PermissionsScreen
-import com.zex.tracker.ui.screens.setup.DeviceAdminScreen
 import com.zex.tracker.ui.screens.dashboard.DashboardScreen
 import com.zex.tracker.data.local.prefs.SecurePrefs
 import com.zex.tracker.core.constants.ZexConstants
@@ -20,29 +15,17 @@ fun ZexNavHost(prefs: SecurePrefs) {
     val deviceToken   = prefs.getString(ZexConstants.KEY_DEVICE_TOKEN)
     val ownerToken    = prefs.getString(ZexConstants.KEY_OWNER_TOKEN)
 
-    // Consider user ready if:
-    // 1. Setup wizard was completed (KEY_IS_SETUP_COMPLETE = true), OR
-    // 2. Device has a device_token saved (registered device)
     val isDeviceReady = isSetupComplete || !deviceToken.isNullOrEmpty()
     
-    // If user logged in but hasn't registered a device yet, send to device_register
     val startDest = when {
         isDeviceReady                             -> "dashboard"
         !ownerToken.isNullOrEmpty()               -> "device_register"
-        else                                      -> "welcome"
+        else                                      -> "node_login"
     }
 
     NavHost(navController = navController, startDestination = startDest) {
-        composable("welcome") { WelcomeScreen(navController) }
-        composable("auth") { AuthScreen(navController) }
-        composable("device_register") { DeviceRegisterScreen(navController) }
-        composable("permissions") { PermissionsScreen(navController) }
-        composable("device_admin") { 
-            val context = androidx.compose.ui.platform.LocalContext.current
-            DeviceAdminScreen(navController, onFinish = {
-                navController.navigate("security_guide")
-            }) 
-        }
+        composable("node_login") { com.zex.tracker.ui.screens.auth.NodeLoginScreen(navController) }
+        composable("device_register") { com.zex.tracker.ui.screens.auth.DeviceRegistrationScreen(navController) }
         composable("security_guide") {
             com.zex.tracker.ui.screens.setup.SecurityGuideScreen(navController, prefs)
         }
@@ -51,7 +34,7 @@ fun ZexNavHost(prefs: SecurePrefs) {
             route = "radar/{deviceName}",
             arguments = listOf(androidx.navigation.navArgument("deviceName") { type = androidx.navigation.NavType.StringType })
         ) { backStackEntry ->
-            val deviceName = backStackEntry.arguments?.getString("deviceName") ?: "جهاز مفقود"
+            val deviceName = backStackEntry.arguments?.getString("deviceName") ?: "ZEX-NODE"
             com.zex.tracker.ui.screens.dashboard.BleRadarScreen(navController, deviceName)
         }
         composable("settings") { com.zex.tracker.ui.screens.settings.SettingsScreen(navController, prefs) }
