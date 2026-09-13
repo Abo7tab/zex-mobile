@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.zex.tracker.core.logging.LiveTerminalLogger
 import com.zex.tracker.security.ble.ZexBleManager
 
 import com.zex.tracker.core.constants.ZexConstants
@@ -16,6 +17,7 @@ import com.zex.tracker.data.local.prefs.SecurePrefs
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
+    val terminalLogger: LiveTerminalLogger,
     private val zexApi: ZexApi,
     private val bleManager: ZexBleManager,
     private val prefs: SecurePrefs

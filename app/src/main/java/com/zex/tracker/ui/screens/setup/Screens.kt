@@ -3,6 +3,17 @@ package com.zex.tracker.ui.screens.setup
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Search
+
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.platform.LocalContext
@@ -64,11 +75,11 @@ fun AuthScreen(navController: NavController, viewModel: SetupViewModel = hiltVie
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp), verticalArrangement = Arrangement.Center) {
             Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(24.dp)) {
-                    Text(if (isLogin) "تسجيل الدخول" else "إنشاء حساب", style = MaterialTheme.typography.headlineMedium)
+                    Text(if (isLogin) "AUTHENTICATE TERMINAL // دخول" else "إنشاء حساب", style = MaterialTheme.typography.headlineMedium)
                     ErrorBanner(state.error)
                     
-                    OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("البريد الإلكتروني") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = pass, onValueChange = { pass = it }, label = { Text("كلمة المرور") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("OPERATOR CALL SIGN") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = pass, onValueChange = { pass = it }, label = { Text("TACTICAL ACCESS KEY") }, modifier = Modifier.fillMaxWidth())
                     
                     if (!isLogin) {
                         OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("الاسم") }, modifier = Modifier.fillMaxWidth())
@@ -119,20 +130,22 @@ fun DeviceRegisterScreen(navController: NavController, viewModel: SetupViewModel
 @Composable
 fun PermissionsScreen(navController: NavController) {
     val context = LocalContext.current
-    var isStandardGranted by remember { mutableStateOf(false) }
+    var isLocGranted by remember { mutableStateOf(false) }
+    var isSmsGranted by remember { mutableStateOf(false) }
+    var isBleGranted by remember { mutableStateOf(false) }
     var isOverlayGranted by remember { mutableStateOf(false) }
 
-    val checkPermissions = {
-        val fineLoc = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        val sms = ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
+    fun updateStatuses() {
+        isLocGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        isSmsGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
         
-        var ble = true
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            ble = ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED &&
-                  ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+        isBleGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_ADVERTISE) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
         }
         
-        isStandardGranted = fineLoc && sms && ble
         isOverlayGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             android.provider.Settings.canDrawOverlays(context)
         } else {
@@ -140,80 +153,130 @@ fun PermissionsScreen(navController: NavController) {
         }
     }
 
-    LaunchedEffect(Unit) {
-        checkPermissions()
+    LaunchedEffect(Unit) { updateStatuses() }
+
+    val totalModules = 4
+    val activeModules = listOf(isLocGranted, isSmsGranted, isBleGranted, isOverlayGranted).count { it }
+    val progress = activeModules.toFloat() / totalModules.toFloat()
+
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        updateStatuses()
     }
 
-    // A lifecycle observer could be added to re-check when returning from settings, but simple buttons work too
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(24.dp))
+        Text("ZEX DIRECT-BRIDGE", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Text("SYSTEM READINESS", color = MaterialTheme.colorScheme.onBackground)
+        
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(150.dp)) {
+            CircularProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.primary,
+                strokeWidth = 8.dp,
+                trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("${(progress * 100).toInt()}%", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Text("$activeModules OF $totalModules ONLINE", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground)
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(32.dp))
 
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
-        checkPermissions()
-    }
+        fun grantAll() {
+            val perms = mutableListOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.RECEIVE_SMS,
+                Manifest.permission.SEND_SMS,
+                Manifest.permission.READ_SMS
+            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                perms.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                perms.add(Manifest.permission.BLUETOOTH_SCAN)
+                perms.add(Manifest.permission.BLUETOOTH_CONNECT)
+                perms.add(Manifest.permission.BLUETOOTH_ADVERTISE)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                perms.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            launcher.launch(perms.toTypedArray())
+            
+            if (!isOverlayGranted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val intent = Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:" + context.packageName))
+                context.startActivity(intent)
+            }
+        }
 
-    Scaffold { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp), verticalArrangement = Arrangement.Center) {
-            Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(24.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("الصلاحيات المطلوبة للحماية", style = MaterialTheme.typography.headlineMedium)
-                        if (isStandardGranted && isOverlayGranted) Icon(Icons.Default.CheckCircle, contentDescription = "Granted", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 8.dp))
-                    }
-                    Text("نظام ZEX يحتاج لصلاحيات الموقع، الرسائل، البلوتوث (للرادار)، والظهور فوق التطبيقات للعمل بكفاءة.", modifier = Modifier.padding(vertical = 8.dp))
-                    Text("⚠️ هام: عند ظهور نافذة الموقع، اختر (السماح طوال الوقت) لضمان حماية الهاتف عند إغلاق الشاشة.", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 8.dp))
-                    Spacer(Modifier.height(8.dp))
-                    
-                    PrimaryButton(if (isStandardGranted) "✅ الصلاحيات الأساسية مكتملة" else "1. منح الصلاحيات الأساسية", onClick = { 
-                        val perms = mutableListOf(
-                            Manifest.permission.ACCESS_FINE_LOCATION,
-                            Manifest.permission.ACCESS_COARSE_LOCATION,
-                            Manifest.permission.RECEIVE_SMS,
-                            Manifest.permission.SEND_SMS,
-                            Manifest.permission.READ_PHONE_STATE
-                        )
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            perms.add(Manifest.permission.BLUETOOTH_SCAN)
-                            perms.add(Manifest.permission.BLUETOOTH_ADVERTISE)
-                            perms.add(Manifest.permission.BLUETOOTH_CONNECT)
-                        }
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            perms.add(Manifest.permission.POST_NOTIFICATIONS)
-                        }
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            perms.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                        }
-                        launcher.launch(perms.toTypedArray())
-                    })
-                    
-                    Spacer(Modifier.height(8.dp))
-                    
-                    Button(onClick = {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            val intent = android.content.Intent(
-                                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                android.net.Uri.parse("package:${context.packageName}")
-                            )
-                            context.startActivity(intent)
-                        }
-                    }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = if (isOverlayGranted) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary)) {
-                        Text(if (isOverlayGranted) "✅ صلاحية القفل مكتملة" else "2. منح صلاحية القفل (العرض فوق التطبيقات)")
-                    }
-                    
-                    Spacer(Modifier.height(8.dp))
-                    
-                    Button(onClick = { checkPermissions() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.outlinedButtonColors()) {
-                        Text("تحديث حالة الصلاحيات")
-                    }
-
-                    Spacer(Modifier.height(16.dp))
-                    Button(
-                        onClick = { navController.navigate("device_admin") },
-                        enabled = isStandardGranted && isOverlayGranted,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("متابعة")
-                    }
+        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.LocationOn, contentDescription = null, tint = if (isLocGranted) Color(0xFF00FA9A) else Color.Gray)
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("GPS & PRECISION COORDS", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("ACCESS_FINE_LOCATION", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
             }
+        }
+        
+        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Warning, contentDescription = null, tint = if (isOverlayGranted) Color(0xFF00FA9A) else Color.Gray)
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("OVERLAY & EXEC LOCKDOWN", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("SYSTEM_ALERT_WINDOW", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                }
+            }
+        }
+
+        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Email, contentDescription = null, tint = if (isSmsGranted) Color(0xFF00FA9A) else Color.Gray)
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("ENCRYPTED SMS DISPATCH", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("SEND_SMS / RECEIVE_SMS", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                }
+            }
+        }
+
+        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Search, contentDescription = null, tint = if (isBleGranted) Color(0xFF00FA9A) else Color.Gray)
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("BLE RADAR & BEACONS", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("BLUETOOTH_SCAN/ADVERTISE", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Button(
+            onClick = { grantAll() },
+            modifier = Modifier.fillMaxWidth(),
+            shape = androidx.compose.foundation.shape.CutCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.Black)
+        ) {
+            Text("GRANT ALL & INITIALIZE SYSTEM", fontWeight = FontWeight.Bold)
+        }
+        
+        TextButton(onClick = { navController.navigate("deviceAdmin") }) {
+            Text("PROCEED (DEBUG)", color = Color.Gray)
         }
     }
 }

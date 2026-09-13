@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.*
@@ -62,6 +63,7 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
     var commandExpanded by remember { mutableStateOf(false) }
 
     var isBleScanning by remember { mutableStateOf(false) }
+    var showTerminal by remember { mutableStateOf(false) }
     
     var sims by remember { mutableStateOf<List<SubscriptionInfo>>(emptyList()) }
     var selectedSimId by remember { mutableStateOf(-1) }
@@ -98,6 +100,9 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
                 title = { Text("ZEX Military", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary, titleContentColor = MaterialTheme.colorScheme.onPrimary),
                 actions = {
+                    IconButton(onClick = { showTerminal = true }) {
+                        Icon(androidx.compose.material.icons.Icons.Filled.List, contentDescription = "Terminal", tint = MaterialTheme.colorScheme.onPrimary)
+                    }
                     IconButton(onClick = { navController.navigate("settings") }) {
                         Icon(Icons.Filled.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onPrimary)
                     }
@@ -343,6 +348,13 @@ fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel:
                     }
                 }
             }
+        }
+
+        if (showTerminal) {
+            LiveAuditTerminalBottomSheet(
+                logger = viewModel.terminalLogger,
+                onDismissRequest = { showTerminal = false }
+            )
         }
     }
 }

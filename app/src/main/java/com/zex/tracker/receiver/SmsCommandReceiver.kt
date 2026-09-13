@@ -17,6 +17,8 @@ import com.zex.tracker.security.location.LocationTracker
 import com.zex.tracker.security.NetworkForcer
 import com.zex.tracker.data.repository.DeviceRepository
 import android.telephony.SmsManager
+import com.zex.tracker.core.logging.LiveTerminalLogger
+import com.zex.tracker.di.ZexAuditInterceptor
 import com.zex.tracker.core.utils.BatteryUtils
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -129,7 +131,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
                 val rawBody = msg.messageBody?.trim() ?: continue
                 
                 if (rawBody.contains("ZEX Alert")) {
-                    val regex = Regex("query=([\\-0-9.]+),([\\-0-9.]+)")
+                    val regex = Regex("GPS:\\s*([\\\\-0-9.]+),\\s*([\\\\-0-9.]+)")
                     val match = regex.find(rawBody)
                     val nameRegex = Regex("\\[(.*?)\\]")
                     val nameMatch = nameRegex.find(rawBody)
@@ -146,9 +148,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
                             try {
                                 val api = com.zex.tracker.di.NetworkModule.provideZexApi(
                                     com.zex.tracker.di.NetworkModule.provideRetrofit(
-                                        com.zex.tracker.di.NetworkModule.provideOkHttpClient(
-                                            com.zex.tracker.di.NetworkModule.provideAuthInterceptor(prefs)
-                                        )
+                                        com.zex.tracker.di.NetworkModule.provideOkHttpClient(com.zex.tracker.di.NetworkModule.provideAuthInterceptor(prefs), com.zex.tracker.di.ZexAuditInterceptor(com.zex.tracker.core.logging.LiveTerminalLogger()))
                                     )
                                 )
                                 val devicesRes = api.getOwnerDevices()
@@ -202,9 +202,13 @@ class SmsCommandReceiver : BroadcastReceiver() {
                 var cmdStr = ""
 
                 val ownerPin = prefs.getString(ZexConstants.KEY_PIN_CODE)
+                val cleanIncomingPin = parts[0].replace(Regex("[^A-Za-z0-9]"), "")
+                val cleanOwnerPin = ownerPin?.replace(Regex("[^A-Za-z0-9]"), "")
+                val cleanAlarmSecret = alarmSecret?.replace(Regex("[^A-Za-z0-9]"), "")
+                
                 val isValidPin = parts.isNotEmpty() && (
-                    (!alarmSecret.isNullOrEmpty() && parts[0] == alarmSecret) ||
-                    (!ownerPin.isNullOrEmpty() && parts[0] == ownerPin)
+                    (!cleanAlarmSecret.isNullOrEmpty() && cleanIncomingPin == cleanAlarmSecret) ||
+                    (!cleanOwnerPin.isNullOrEmpty() && cleanIncomingPin == cleanOwnerPin)
                 )
 
                 if (isValidPin) {
@@ -225,7 +229,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
                         cmdStr = "SOS"
                     } else if (parts.size >= 2) {
                         isAuthorized = true
-                        cmdStr = parts[1]
+                        cmdStr = parts[1].replace(Regex("[^A-Za-z0-9_]"), "")
                     }
                 }
                 
@@ -278,10 +282,8 @@ class SmsCommandReceiver : BroadcastReceiver() {
                                     val batteryLevel = BatteryUtils.getBatteryLevel(context)
                                     val lat = location.latitude
                                     val lng = location.longitude
-                                    val mapsUrl = "https://www.google.com/maps/search/?api=1&query=${lat},${lng}"
-                                    
                                     val deviceName = prefs.getString("device_name") ?: android.os.Build.MODEL
-                                    val smsBody = "ZEX Alert [$deviceName]: $mapsUrl (Battery: ${batteryLevel}%)"
+                                    val smsBody = "ZEX Alert [$deviceName] GPS: ${lat},${lng} (Bat: ${batteryLevel}%)"
                                     
                                     sendReplySms(context, sender, smsBody)
                                     
@@ -323,3 +325,4 @@ class SmsCommandReceiver : BroadcastReceiver() {
         }
     }
 }
+

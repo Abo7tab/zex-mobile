@@ -1,4 +1,4 @@
-package com.zex.tracker.di
+﻿package com.zex.tracker.di
 
 import com.zex.tracker.BuildConfig
 import com.zex.tracker.core.constants.ZexConstants
@@ -16,6 +16,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
+import javax.inject.Named
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -23,6 +24,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    @Named("AuthInterceptor")
     fun provideAuthInterceptor(securePrefs: SecurePrefs): Interceptor {
         return Interceptor { chain ->
             val original = chain.request()
@@ -45,9 +47,11 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(authInterceptor: Interceptor): OkHttpClient {
+    fun provideOkHttpClient(
+        @Named("AuthInterceptor") authInterceptor: Interceptor,
+        zexAuditInterceptor: ZexAuditInterceptor
+    ): OkHttpClient {
         val logging = HttpLoggingInterceptor { message ->
-            // Redact passwords from request body logs
             if (message.contains("password") || message.contains("pin_code") || message.contains("password_hash")) {
                 ZexLogger.d("OkHttp", "[REDACTED SENSITIVE BODY]")
             } else {
@@ -61,6 +65,7 @@ object NetworkModule {
 
         return OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
+            .addInterceptor(zexAuditInterceptor)
             .addInterceptor(logging)
             .connectTimeout(20, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)

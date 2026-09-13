@@ -15,10 +15,11 @@ import kotlinx.coroutines.*
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
-@Singleton
 @SuppressLint("MissingPermission")
+@Singleton
 class ZexBleManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val prefs: SecurePrefs,
@@ -31,7 +32,7 @@ class ZexBleManager @Inject constructor(
         const val TAG = "ZexBleManager"
     }
 
-    private val _foundDevices = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 10)
+    private val _foundDevices = MutableSharedFlow<Pair<String, Int>>(replay = 10, extraBufferCapacity = 10)
     val foundDevices = _foundDevices.asSharedFlow()
 
     private val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
@@ -49,8 +50,8 @@ class ZexBleManager @Inject constructor(
             ZexLogger.i(TAG, "BLE Advertise Started successfully")
         }
         override fun onStartFailure(errorCode: Int) {
-            isAdvertising = false
             ZexLogger.e(TAG, "BLE Advertise failed with error: $errorCode")
+            isAdvertising = false
         }
     }
 
@@ -58,9 +59,10 @@ class ZexBleManager @Inject constructor(
         override fun onScanResult(callbackType: Int, result: ScanResult?) {
             result?.scanRecord?.serviceData?.get(ZEX_SERVICE_UUID)?.let { data ->
                 val deviceHash = String(data)
-                ZexLogger.i(TAG, "Found ZEX Device via BLE Mesh: $deviceHash")
-                _foundDevices.tryEmit(deviceHash)
-                reportDeviceFound(deviceHash)
+                val rssi = result.rssi
+                ZexLogger.i(TAG, "Found ZEX Device via BLE Mesh: $deviceHash, RSSI: $rssi")
+                _foundDevices.tryEmit(Pair(deviceHash, rssi))
+                // reportDeviceFound(deviceHash)
             }
         }
         override fun onScanFailed(errorCode: Int) {
@@ -73,12 +75,13 @@ class ZexBleManager @Inject constructor(
         if (isAdvertising) return
 
         val deviceUid = prefs.getString("device_uid") ?: return
-        val hashData = deviceUid.take(16).toByteArray(Charsets.UTF_8) // Fit in Service Data
+        val hashData = deviceUid.takeLast(8).toByteArray(Charsets.UTF_8)
 
         val settings = AdvertiseSettings.Builder()
-            .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
-            .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
+            .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_POWER)
             .setConnectable(false)
+            .setTimeout(0)
+            .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
             .build()
 
         val data = AdvertiseData.Builder()
@@ -116,29 +119,6 @@ class ZexBleManager @Inject constructor(
         scanner?.stopScan(scanCallback)
         isScanning = false
         ZexLogger.i(TAG, "BLE Scan Stopped")
-    }
-
-    private fun reportDeviceFound(deviceHash: String) {
-        scope.launch {
-            try {
-                // Get current location
-                val loc = locationTracker.getCurrentLocation() ?: return@launch
-                val batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as android.os.BatteryManager
-                val battery = batteryManager.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
-
-                val payload = BleRelayPayload(
-                    target_device_hash = deviceHash,
-                    latitude = loc.latitude,
-                    longitude = loc.longitude,
-                    accuracy = loc.accuracy,
-                    battery_level = battery
-                )
-                api.sendBleRelayLocation(payload)
-                ZexLogger.i(TAG, "Successfully relayed location for $deviceHash")
-            } catch (e: Exception) {
-                ZexLogger.e(TAG, "Failed to relay BLE location", e)
-            }
-        }
-    }
+}
 }
 

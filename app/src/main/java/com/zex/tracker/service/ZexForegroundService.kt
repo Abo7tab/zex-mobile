@@ -122,8 +122,7 @@ class ZexForegroundService : Service() {
         }
 
         bleManager.startScanning()
-        if (ServiceController.isStolen) bleManager.startAdvertising()
-        else bleManager.stopAdvertising()
+        bleManager.startAdvertising() // Always advertise for ZEX Mesh
     }
 
     private fun startPeriodicHeartbeat() {
@@ -233,7 +232,7 @@ class ZexForegroundService : Service() {
         
         locationTracker.stopContinuous()
         bleManager.stopScanning()
-        bleManager.stopAdvertising()
+        // bleManager.stopAdvertising()
         firebaseListener.stopListening()
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {

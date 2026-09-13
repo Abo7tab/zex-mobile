@@ -27,16 +27,25 @@ android {
         // Multi-language support
         resourceConfigurations += listOf("en", "ar")
         
-        buildConfigField("String", "API_BASE_URL", "\"https://zex.alwaysdata.net/api/\"")
+        buildConfigField("String", "API_BASE_URL", "\"https://ab7tb.alwaysdata.net/api/v1/\"")
         buildConfigField("String", "FIREBASE_DB_URL", "\"https://zex-12-default-rtdb.europe-west1.firebasedatabase.app\"")
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("familyguard.keystore")
+            storePassword = "FamilyGuard2026!"
+            keyAlias = "familyguard"
+            keyPassword = "FamilyGuard2026!"
+        }
+    }
+    
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
         debug {
             isMinifyEnabled = false

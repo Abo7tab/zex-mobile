@@ -1,67 +1,78 @@
-package com.zex.tracker.ui.theme
+﻿package com.zex.tracker.ui.theme
 
 import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import androidx.compose.ui.graphics.Color
 
 private val LightColorScheme = lightColorScheme(
-    primary = md_theme_light_primary,
-    onPrimary = md_theme_light_onPrimary,
-    secondary = md_theme_light_secondary,
-    onSecondary = md_theme_light_onSecondary,
-    tertiary = md_theme_light_tertiary,
-    onTertiary = md_theme_light_onTertiary,
-    background = md_theme_light_background,
-    onBackground = md_theme_light_onBackground
+    primary = tactical_primary,
+    onPrimary = tactical_onPrimary,
+    secondary = tactical_secondary,
+    onSecondary = tactical_onSecondary,
+    tertiary = tactical_tertiary,
+    onTertiary = tactical_onTertiary,
+    background = tactical_background,
+    onBackground = tactical_onBackground,
+    surface = tactical_surface,
+    onSurface = tactical_onSurface,
+    primaryContainer = Color(0xFF164E63), // Darker cyan box
+    onPrimaryContainer = tactical_primary,
+    secondaryContainer = Color(0xFF0F172A),
+    onSecondaryContainer = Color(0xFF94A3B8),
+    surfaceVariant = Color(0xFF1E293B),
+    onSurfaceVariant = Color(0xFF94A3B8),
+    error = tactical_error,
+    onError = tactical_onError,
+    errorContainer = tactical_errorContainer,
+    onErrorContainer = tactical_onErrorContainer
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = md_theme_dark_primary,
-    onPrimary = md_theme_dark_onPrimary,
-    secondary = md_theme_dark_secondary,
-    onSecondary = md_theme_dark_onSecondary,
-    tertiary = md_theme_dark_tertiary,
-    onTertiary = md_theme_dark_onTertiary,
-    background = md_theme_dark_background,
-    onBackground = md_theme_dark_onBackground
+    primary = tactical_primary,
+    onPrimary = tactical_onPrimary,
+    secondary = tactical_secondary,
+    onSecondary = tactical_onSecondary,
+    tertiary = tactical_tertiary,
+    onTertiary = tactical_onTertiary,
+    background = tactical_background,
+    onBackground = tactical_onBackground,
+    surface = tactical_surface,
+    onSurface = tactical_onSurface,
+    primaryContainer = Color(0xFF164E63),
+    onPrimaryContainer = tactical_primary,
+    secondaryContainer = Color(0xFF0F172A),
+    onSecondaryContainer = Color(0xFF94A3B8),
+    surfaceVariant = Color(0xFF1E293B),
+    onSurfaceVariant = Color(0xFF94A3B8),
+    error = tactical_error,
+    onError = tactical_onError,
+    errorContainer = tactical_errorContainer,
+    onErrorContainer = tactical_onErrorContainer
 )
 
-/**
- * Main theme composable for ZEX
- * Handles dynamic colors for Android 12+ and sets status bar color
- */
 @Composable
 fun ZexTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+    val colorScheme = DarkColorScheme
     
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            window.statusBarColor = colorScheme.background.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
         }
     }
 
