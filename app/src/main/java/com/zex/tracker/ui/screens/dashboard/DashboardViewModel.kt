@@ -50,4 +50,12 @@ class DashboardViewModel @Inject constructor(
     fun stopBleScan() {
         try { bleManager.stopScanning() } catch (e: Exception) {}
     }
+
+    fun pingDevice(targetHash: String = "") {
+        viewModelScope.launch {
+            terminalLogger.log("SYS//CMD > SEND_PING -> TARGET: $targetHash")
+        }
+    }
 }
+
+

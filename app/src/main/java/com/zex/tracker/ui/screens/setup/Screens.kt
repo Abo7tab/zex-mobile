@@ -43,15 +43,23 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.ui.Alignment
 
+import androidx.compose.foundation.shape.CutCornerShape
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+
 @Composable
 fun WelcomeScreen(navController: NavController) {
     Scaffold { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp), verticalArrangement = Arrangement.Center) {
-            Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(24.dp)) {
-                    Text("منظومة ZEX لتتبع وتأمين الهواتف", style = MaterialTheme.typography.headlineMedium)
+        Column(modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp).background(MaterialTheme.colorScheme.background), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+            Card(shape = CutCornerShape(4.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("منظومة ZEX العسكرية", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    Text("[ SYS_AUTH_REQUIRED ]", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
                     Spacer(Modifier.height(32.dp))
-                    PrimaryButton("متابعة", onClick = { navController.navigate("auth") })
+                    PrimaryButton("بدء التشفير // INITIATE", onClick = { navController.navigate("auth") })
                 }
             }
         }
@@ -68,34 +76,157 @@ fun AuthScreen(navController: NavController, viewModel: SetupViewModel = hiltVie
     var name by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var pin by remember { mutableStateOf("") }
+    var showPassword by remember { mutableStateOf(false) }
 
     LoadingOverlay(state.isLoading)
 
     Scaffold { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp), verticalArrangement = Arrangement.Center) {
-            Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(padding).padding(24.dp), verticalArrangement = Arrangement.Center) {
+            Card(shape = CutCornerShape(4.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(24.dp)) {
-                    Text(if (isLogin) "AUTHENTICATE TERMINAL // دخول" else "إنشاء حساب", style = MaterialTheme.typography.headlineMedium)
+                    Text(if (isLogin) "AUTHENTICATE TERMINAL" else "TACTICAL OPS ENLIST", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    Text(if (isLogin) "بروتوكول الدخول التكتيكي" else "بروتوكول تسجيل العناصر", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(16.dp))
                     ErrorBanner(state.error)
                     
-                    OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("OPERATOR CALL SIGN") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = pass, onValueChange = { pass = it }, label = { Text("TACTICAL ACCESS KEY") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(
+                        value = email, 
+                        onValueChange = { email = it }, 
+                        label = { Text("OPERATOR CALL SIGN") }, 
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                            focusedLabelColor = MaterialTheme.colorScheme.primary,
+                            unfocusedLabelColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                            focusedTextColor = androidx.compose.ui.graphics.Color.White,
+                            unfocusedTextColor = androidx.compose.ui.graphics.Color.White,
+                            cursorColor = MaterialTheme.colorScheme.primary,
+                            focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                            unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent
+                        ),
+                        shape = CutCornerShape(4.dp),
+                        textStyle = androidx.compose.ui.text.TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = pass, 
+                        onValueChange = { pass = it }, 
+                        label = { Text("TACTICAL ACCESS KEY") }, 
+                        modifier = Modifier.fillMaxWidth(),
+                        visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { showPassword = !showPassword }) {
+                                Icon(
+                                    imageVector = if (showPassword) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = "Toggle password visibility",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                            focusedLabelColor = MaterialTheme.colorScheme.primary,
+                            unfocusedLabelColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                            focusedTextColor = androidx.compose.ui.graphics.Color.White,
+                            unfocusedTextColor = androidx.compose.ui.graphics.Color.White,
+                            cursorColor = MaterialTheme.colorScheme.primary,
+                            focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                            unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent
+                        ),
+                        shape = CutCornerShape(4.dp),
+                        textStyle = androidx.compose.ui.text.TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                    )
                     
                     if (!isLogin) {
-                        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("الاسم") }, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("رقم الهاتف") }, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(value = pin, onValueChange = { pin = it }, label = { Text("رمز PIN من 6 أرقام") }, modifier = Modifier.fillMaxWidth())
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = name, 
+                            onValueChange = { name = it }, 
+                            label = { Text("OPERATOR NAME") }, 
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                unfocusedLabelColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                focusedTextColor = androidx.compose.ui.graphics.Color.White,
+                                unfocusedTextColor = androidx.compose.ui.graphics.Color.White,
+                                cursorColor = MaterialTheme.colorScheme.primary,
+                                focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                                unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent
+                            ),
+                            shape = CutCornerShape(4.dp),
+                            textStyle = androidx.compose.ui.text.TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = phone, 
+                            onValueChange = { phone = it }, 
+                            label = { Text("SECURE PHONE NUMBER") }, 
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                unfocusedLabelColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                focusedTextColor = androidx.compose.ui.graphics.Color.White,
+                                unfocusedTextColor = androidx.compose.ui.graphics.Color.White,
+                                cursorColor = MaterialTheme.colorScheme.primary,
+                                focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                                unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent
+                            ),
+                            shape = CutCornerShape(4.dp),
+                            textStyle = androidx.compose.ui.text.TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = pin, 
+                            onValueChange = { pin = it }, 
+                            label = { Text("6-DIGIT PIN") }, 
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                unfocusedLabelColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                focusedTextColor = androidx.compose.ui.graphics.Color.White,
+                                unfocusedTextColor = androidx.compose.ui.graphics.Color.White,
+                                cursorColor = MaterialTheme.colorScheme.primary,
+                                focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                                unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent
+                            ),
+                            shape = CutCornerShape(4.dp),
+                            textStyle = androidx.compose.ui.text.TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                        )
+                    }
+                    
+                    Spacer(Modifier.height(24.dp))
+                    
+                    Button(
+                        onClick = {
+                            if (isLogin) {
+                                viewModel.loginOwner(LoginRequest(email, pass)) { navController.navigate("device_register") }
+                            } else {
+                                viewModel.registerOwner(RegisterRequest(name, email, phone, pass, pass, pin)) { navController.navigate("device_register") }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = CutCornerShape(4.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.background
+                        )
+                    ) {
+                        Text(if (isLogin) "دخول // AUTHENTICATE" else "تسجيل // ENLIST NOW", fontWeight = FontWeight.Bold, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
                     }
                     
                     Spacer(Modifier.height(16.dp))
-                    PrimaryButton("تأكيد", onClick = {
-                        if (isLogin) {
-                            viewModel.loginOwner(LoginRequest(email, pass)) { navController.navigate("device_register") }
-                        } else {
-                            viewModel.registerOwner(RegisterRequest(name, email, phone, pass, pass, pin)) { navController.navigate("device_register") }
-                        }
-                    })
-                    TextButton(onClick = { isLogin = !isLogin }) { Text("التبديل بين تسجيل الدخول/إنشاء حساب") }
+                    TextButton(onClick = { isLogin = !isLogin }, modifier = Modifier.fillMaxWidth()) { 
+                        Text(if (isLogin) "إنشاء حساب جديد // REGISTER OPERATOR" else "العودة للدخول // BACK TO LOGIN", color = MaterialTheme.colorScheme.primary, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace) 
+                    }
                 }
             }
         }

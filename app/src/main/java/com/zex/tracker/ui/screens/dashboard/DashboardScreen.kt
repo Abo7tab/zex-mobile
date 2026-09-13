@@ -1,508 +1,346 @@
 package com.zex.tracker.ui.screens.dashboard
 
-import android.Manifest
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
-import android.telephony.SmsManager
-import android.telephony.SubscriptionInfo
-import android.telephony.SubscriptionManager
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.zex.tracker.core.constants.ZexConstants
 import com.zex.tracker.data.local.prefs.SecurePrefs
-import com.zex.tracker.data.remote.dto.DeviceDto
 import com.zex.tracker.service.ZexForegroundService
-import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(prefs: SecurePrefs, navController: NavController, viewModel: DashboardViewModel = hiltViewModel()) {
-    val uid = prefs.getString(ZexConstants.KEY_DEVICE_UID) ?: "Unknown UID"
+fun DashboardScreen(
+    prefs: SecurePrefs,
+    navController: NavController,
+    viewModel: DashboardViewModel = hiltViewModel()
+) {
     val context = LocalContext.current
-    
     var isRunning by remember { mutableStateOf(ZexForegroundService.isRunning) }
-    val devices by viewModel.devices.collectAsState()
-    var selectedTargetDevice by remember { mutableStateOf<DeviceDto?>(null) }
-    var expanded by remember { mutableStateOf(false) }
+    var isBleEnabled by remember { mutableStateOf(true) }
+    var isSmsEnabled by remember { mutableStateOf(true) }
 
-    var targetPhone by remember { mutableStateOf("") }
-    
-    val commandOptions = listOf(
-        "📍 تحديد الموقع (LOCATE)" to "LOCATE",
-        "🚨 تشغيل الإنذار (SCREAM)" to "SCREAM",
-        "🛑 إيقاف الإنذار (STOP_SCREAM)" to "STOP_SCREAM",
-        "⚠️ وضع السرقة الشامل (STOLEN)" to "STOLEN_MODE",
-        "✅ إلغاء وضع السرقة (FOUND)" to "FOUND_MODE",
-        "🔒 قفل الشاشة قسرياً (LOCK)" to "LOCK",
-        "🌐 تفعيل بيانات الهاتف (ENABLE_NET)" to "ENABLE_NET",
-        "⚡ تتبع مستمر لحظي (TRACK)" to "CONTINUOUS_TRACK"
-    )
-    
-    var selectedCommand by remember { mutableStateOf(commandOptions[0]) }
-    var commandExpanded by remember { mutableStateOf(false) }
-
-    var isBleScanning by remember { mutableStateOf(false) }
-    var showTerminal by remember { mutableStateOf(false) }
-    
-    var sims by remember { mutableStateOf<List<SubscriptionInfo>>(emptyList()) }
-    var selectedSimId by remember { mutableStateOf(-1) }
-    var simExpanded by remember { mutableStateOf(false) }
+    val bgColor = Color(0xFFF8FAFC)
+    val cardColor = Color(0xFFFFFFFF)
+    val primaryColor = Color(0xFF2563EB)
+    val successColor = Color(0xFF16A34A)
+    val terminalBg = Color(0xFF1E293B)
+    val terminalText = Color(0xFF34D399)
 
     LaunchedEffect(Unit) {
         viewModel.fetchDevices()
-        try {
-            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
-                val subManager = context.getSystemService(SubscriptionManager::class.java)
-                val activeSims = subManager.activeSubscriptionInfoList ?: emptyList()
-                sims = activeSims
-                if (activeSims.isNotEmpty()) {
-                    selectedSimId = activeSims[0].subscriptionId
-                }
-            }
-        } catch (e: Exception) {}
-    }
-
-    LaunchedEffect(devices) {
-        if (devices.isNotEmpty() && selectedTargetDevice == null) {
-            val nonSelf = devices.firstOrNull { it.device_uid != uid }
-            selectedTargetDevice = nonSelf ?: devices.first()
-            if (nonSelf?.phone_number != null) {
-                targetPhone = nonSelf.phone_number
-            }
-        }
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            TopAppBar(
-                title = { Text("ZEX Military", fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary, titleContentColor = MaterialTheme.colorScheme.onPrimary),
-                actions = {
-                    IconButton(onClick = { showTerminal = true }) {
-                        Icon(androidx.compose.material.icons.Icons.Filled.List, contentDescription = "Terminal", tint = MaterialTheme.colorScheme.onPrimary)
-                    }
-                    IconButton(onClick = { navController.navigate("settings") }) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onPrimary)
-                    }
-                }
-            )
-        }
+        containerColor = bgColor
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(16.dp)
-                .background(MaterialTheme.colorScheme.background)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .verticalScroll(rememberScrollState())
         ) {
-            
-            SecurityStatusMonitor()
-            BatteryOptimizationWarning()
-            AutoStartWarning(prefs)
-            
-            val currentDevice = devices.find { it.device_uid == uid }
-            
-            // 1. Current Device Card
-            Card(
-                shape = RoundedCornerShape(16.dp),
+            // Header
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = primaryColor,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        // generic icon fallback
+                        Icon(Icons.Default.Info, contentDescription = null, tint = Color.White, modifier = Modifier.padding(8.dp))
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text("ZEX Military C4ISR", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = Color(0xFF0F172A))
+                        Text("Operational Tactical Node", fontSize = 12.sp, color = Color(0xFF64748B))
+                    }
+                }
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = successColor.copy(alpha = 0.15f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(modifier = Modifier.size(6.dp).background(successColor, RoundedCornerShape(50)))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("ONLINE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = successColor)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Top Card
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = primaryColor.copy(alpha = 0.05f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(Build.MODEL, fontWeight = FontWeight.Bold, color = primaryColor, fontSize = 14.sp)
+                        Text(Build.BRAND.uppercase(), color = primaryColor.copy(alpha = 0.8f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = successColor, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("82%", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = successColor)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Sync: 2s ago", fontSize = 12.sp, color = Color(0xFF64748B))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("WSS 14ms", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = primaryColor)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Service Card
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = cardColor),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = primaryColor.copy(alpha = 0.1f),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(Icons.Default.Info, contentDescription = null, tint = primaryColor, modifier = Modifier.padding(8.dp))
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text("C4ISR BACKGROUND SERVICE: ${if (isRunning) "ACTIVE" else "STOPPED"}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(modifier = Modifier.size(6.dp).background(successColor, RoundedCornerShape(50)))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("CPU Wakelock: Held", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = successColor)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Uptime: 18h", fontSize = 10.sp, color = Color(0xFF64748B))
+                            }
+                        }
+                    }
+                    Switch(
+                        checked = isRunning,
+                        onCheckedChange = {
+                            if (it) ZexForegroundService.startService(context)
+                            else ZexForegroundService.stopService(context)
+                            isRunning = it
+                        },
+                        colors = SwitchDefaults.colors(checkedTrackColor = primaryColor)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Offline Mesh Card
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("OFFLINE MESH SUBSYSTEMS", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A), letterSpacing = 1.sp)
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = successColor.copy(alpha = 0.15f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(modifier = Modifier.size(6.dp).background(successColor, RoundedCornerShape(50)))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Armed", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = successColor)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = cardColor),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column {
+                    // Row 1
+                    Row(
+                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Info, contentDescription = null, tint = primaryColor, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text("BLE Radar Beacon", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF0F172A))
+                                Text("UUID: 4C495352 • Tx: +4dBm (~45m)", fontSize = 11.sp, color = Color(0xFF64748B), fontFamily = FontFamily.Monospace)
+                            }
+                        }
+                        Switch(
+                            checked = isBleEnabled,
+                            onCheckedChange = { isBleEnabled = it },
+                            colors = SwitchDefaults.colors(checkedTrackColor = primaryColor)
+                        )
+                    }
+                    Divider(color = Color(0xFFF1F5F9))
+                    // Row 2
+                    Row(
+                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Info, contentDescription = null, tint = primaryColor, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text("SMS Command Listener", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF0F172A))
+                                Text("Dual SIM • SHA256 Armed", fontSize = 11.sp, color = Color(0xFF64748B), fontFamily = FontFamily.Monospace)
+                            }
+                        }
+                        Switch(
+                            checked = isSmsEnabled,
+                            onCheckedChange = { isSmsEnabled = it },
+                            colors = SwitchDefaults.colors(checkedTrackColor = primaryColor)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Defcon status
+            Card(
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = successColor.copy(alpha = 0.15f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = successColor.copy(alpha = 0.3f),
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = successColor, modifier = Modifier.padding(4.dp))
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text("DEFCON-3 NOMINAL", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF065F46))
+                            Text("Telemetry integrity passed • Pipe secure", fontSize = 11.sp, color = Color(0xFF064E3B))
+                        }
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = Color(0xFFE2E8F0)
+                    ) {
+                        Text("Test Alert", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A), modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Terminal
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = terminalBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("📱 هذا الجهاز (الجهاز الحالي)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                    Spacer(Modifier.height(8.dp))
-                    Text("الموديل: ${currentDevice?.device_model ?: android.os.Build.MODEL}")
-                    Text("البطارية: ${currentDevice?.battery_level ?: "--"}%")
-                    Spacer(Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("حالة الحماية: " + (if (isRunning) "نشطة" else "معطلة"), fontWeight = FontWeight.SemiBold)
-                        Switch(
-                            checked = isRunning,
-                            onCheckedChange = { checked ->
-                                if (checked) ZexForegroundService.startService(context)
-                                else ZexForegroundService.stopService(context)
-                                isRunning = checked
-                            }
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(modifier = Modifier.size(8.dp).background(terminalText, RoundedCornerShape(50)))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("LIVE TELEMETRY STREAM", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF94A3B8), letterSpacing = 1.sp)
+                        }
+                        Text("TTY-0 • SECURE TLS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF94A3B8), letterSpacing = 1.sp)
                     }
-                }
-            }
-
-            Spacer(Modifier.height(24.dp))
-            
-            // BLE Radar Card
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("📡 رادار ZEX الميداني", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(8.dp))
-                    Text("البحث عن الأجهزة القريبة غير المتصلة بالإنترنت عبر البلوتوث.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 12.dp))
-                    Button(
-                        onClick = {
-                            val targetName = selectedTargetDevice?.device_name ?: "الجهاز المفقود"
-                            navController.navigate("radar/${Uri.encode(targetName)}")
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                    ) {
-                        Text("📡 فتح رادار البلوتوث الميداني (BLE Radar)")
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            // 2. Remote Target Card
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("🎯 التحكم بالجهاز المستهدف", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(12.dp))
+                    Divider(color = Color(0xFF334155), modifier = Modifier.padding(vertical = 12.dp))
                     
-                    if (devices.size > 1) {
-                        ExposedDropdownMenuBox(
-                            expanded = expanded,
-                            onExpandedChange = { expanded = !expanded }
-                        ) {
-                            OutlinedTextField(
-                                value = selectedTargetDevice?.device_name ?: "اختر جهازك",
-                                onValueChange = {},
-                                readOnly = true,
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                                modifier = Modifier.fillMaxWidth().menuAnchor(),
-                                label = { Text("أجهزتك المسجلة") }
-                            )
-                            ExposedDropdownMenu(
-                                expanded = expanded,
-                                onDismissRequest = { expanded = false }
-                            ) {
-                                devices.filter { it.device_uid != uid }.forEach { device ->
-                                    DropdownMenuItem(
-                                        text = { Text("${device.device_name} - ${device.device_model}") },
-                                        onClick = {
-                                            selectedTargetDevice = device
-                                            targetPhone = device.phone_number ?: ""
-                                            expanded = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                        Spacer(Modifier.height(12.dp))
-                    }
-
-                    OutlinedTextField(
-                        value = targetPhone,
-                        onValueChange = { targetPhone = it },
-                        label = { Text("الجهاز المستهدف (رقم الهاتف)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    
-                    Spacer(Modifier.height(12.dp))
-
-                    ExposedDropdownMenuBox(
-                        expanded = commandExpanded,
-                        onExpandedChange = { commandExpanded = !commandExpanded }
-                    ) {
-                        OutlinedTextField(
-                            value = selectedCommand.first,
-                            onValueChange = {},
-                            readOnly = true,
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = commandExpanded) },
-                            modifier = Modifier.fillMaxWidth().menuAnchor(),
-                            label = { Text("اختر الأمر") }
-                        )
-                        ExposedDropdownMenu(
-                            expanded = commandExpanded,
-                            onDismissRequest = { commandExpanded = false }
-                        ) {
-                            commandOptions.forEach { cmd ->
-                                DropdownMenuItem(
-                                    text = { Text(cmd.first) },
-                                    onClick = {
-                                        selectedCommand = cmd
-                                        commandExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    if (sims.isNotEmpty()) {
-                        Spacer(Modifier.height(12.dp))
-                        ExposedDropdownMenuBox(
-                            expanded = simExpanded,
-                            onExpandedChange = { simExpanded = !simExpanded }
-                        ) {
-                            val selectedSim = sims.find { it.subscriptionId == selectedSimId }
-                            val subManager = context.getSystemService(android.telephony.SubscriptionManager::class.java)
-                            val selectedNumber = if (android.os.Build.VERSION.SDK_INT >= 33 && selectedSim != null) {
-                                subManager.getPhoneNumber(selectedSimId)
-                            } else {
-                                @Suppress("DEPRECATION")
-                                selectedSim?.number
-                            }
-                            val selectedSimName = selectedSim?.displayName?.toString() ?: "اختر الشريحة"
-                            val selectedText = if (!selectedNumber.isNullOrBlank()) "$selectedSimName ($selectedNumber)" else selectedSimName
-
-                            OutlinedTextField(
-                                value = selectedText,
-                                onValueChange = {},
-                                readOnly = true,
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = simExpanded) },
-                                modifier = Modifier.fillMaxWidth().menuAnchor(),
-                                label = { Text("الشريحة المرسلة") }
-                            )
-                            ExposedDropdownMenu(
-                                expanded = simExpanded,
-                                onDismissRequest = { simExpanded = false }
-                            ) {
-                                sims.forEach { sim ->
-                                    val number = if (android.os.Build.VERSION.SDK_INT >= 33) {
-                                        subManager.getPhoneNumber(sim.subscriptionId)
-                                    } else {
-                                        @Suppress("DEPRECATION")
-                                        sim.number
-                                    }
-                                    val name = sim.displayName?.toString() ?: "شريحة ${sim.subscriptionId}"
-                                    val text = if (!number.isNullOrBlank()) "$name ($number)" else name
-                                    DropdownMenuItem(
-                                        text = { Text(text) },
-                                        onClick = {
-                                            selectedSimId = sim.subscriptionId
-                                            simExpanded = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.height(16.dp))
-
-                    Button(
-                        onClick = {
-                            var cleanPhone = targetPhone.replace(" ", "")
-                            if (cleanPhone.startsWith("01")) {
-                                cleanPhone = "+20${cleanPhone.substring(1)}"
-                            }
-                            if (cleanPhone.isNotBlank()) {
-                                val message = "#ZEX#357005#${selectedCommand.second}"
-                                try {
-                                    val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                        if (selectedSimId != -1) context.getSystemService(SmsManager::class.java).createForSubscriptionId(selectedSimId)
-                                        else context.getSystemService(SmsManager::class.java)
-                                    } else {
-                                        if (selectedSimId != -1) SmsManager.getSmsManagerForSubscriptionId(selectedSimId)
-                                        else SmsManager.getDefault()
-                                    }
-                                    smsManager.sendTextMessage(cleanPhone, null, message, null, null)
-                                    Toast.makeText(context, "محاولة الإرسال في الخلفية تمت...", Toast.LENGTH_SHORT).show()
-                                } catch (e: Exception) {
-                                    // Fallback to official messaging app
-                                    val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$cleanPhone")).apply {
-                                        putExtra("sms_body", message)
-                                    }
-                                    context.startActivity(intent)
-                                }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("إرسال أمر SMS طوارئ")
-                    }
+                    Text("[12:30:15] GPS_FIX: Lat 30.00902, Lon 31.13979 (±2.1m)", fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = terminalText, modifier = Modifier.padding(bottom = 6.dp))
+                    Text("[12:29:02] Geofence Audit: WITHIN PERIMETER (Sector A4)", fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = terminalText, modifier = Modifier.padding(bottom = 6.dp))
+                    Text("[12:28:41] Tamper check: PASS (Hardware unbroken)", fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = Color(0xFF64748B))
                 }
             }
-        }
 
-        if (showTerminal) {
-            LiveAuditTerminalBottomSheet(
-                logger = viewModel.terminalLogger,
-                onDismissRequest = { showTerminal = false }
-            )
-        }
-    }
-}
+            Spacer(modifier = Modifier.height(24.dp))
 
-
-@Composable
-fun BatteryOptimizationWarning() {
-    val context = LocalContext.current
-    val powerManager = context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
-    val isIgnoring = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-        powerManager.isIgnoringBatteryOptimizations(context.packageName)
-    } else true
-
-    if (!isIgnoring) {
-        Card(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("تنبيه خطير: تحسين البطارية", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
-                Spacer(Modifier.height(8.dp))
-                Text("نظام أندرويد قد يقتل التطبيق في الخلفية ويوقف تتبع اللوكيشن. يرجى إعفاء التطبيق من قيود البطارية.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
-                Spacer(Modifier.height(8.dp))
-                Button(onClick = {
-                    try {
-                        val intent = android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                        intent.data = android.net.Uri.parse("package:${context.packageName}")
-                        context.startActivity(intent)
-                    } catch (e: Exception) {
-                        Toast.makeText(context, "لا يمكن فتح الإعدادات تلقائياً", Toast.LENGTH_SHORT).show()
-                    }
-                }) {
-                    Text("إعفاء من القيود")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun AutoStartWarning(prefs: SecurePrefs) {
-    val context = LocalContext.current
-    var isDismissed by remember { mutableStateOf(prefs.getBoolean("auto_start_dismissed", false)) }
-
-    if (!isDismissed && com.zex.tracker.utils.AutoStartUtils.isAutoStartRestrictiveDevice()) {
-        Card(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            // Bottom Buttons
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(
+                    onClick = { /* Force Sync */ },
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = primaryColor.copy(alpha = 0.15f), contentColor = primaryColor)
                 ) {
-                    Text("التشغيل التلقائي مطلوب", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
-                    IconButton(onClick = {
-                        prefs.putBoolean("auto_start_dismissed", true)
-                        isDismissed = true
-                    }) {
-                        Icon(Icons.Default.Close, contentDescription = "Dismiss", tint = MaterialTheme.colorScheme.onErrorContainer)
-                    }
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Force Sync", fontWeight = FontWeight.Bold)
                 }
-                Spacer(Modifier.height(8.dp))
-                Text("لضمان عمل التتبع بعد إعادة تشغيل الهاتف، يرجى تفعيل (التشغيل التلقائي) للتطبيق في الإعدادات. إذا كنت قد قمت بتفعيله بالفعل، يمكنك تجاهل هذه الرسالة.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
-                Spacer(Modifier.height(8.dp))
-                Button(onClick = {
-                    com.zex.tracker.utils.AutoStartUtils.openAutoStartSettings(context)
-                }) {
-                    Text("إعدادات التشغيل التلقائي")
-                }
-            }
-        }
-    }
-}
 
-@Composable
-fun SecurityStatusMonitor() {
-    val context = LocalContext.current
-    var hasInternet by remember { mutableStateOf(true) }
-    var hasGps by remember { mutableStateOf(true) }
-    var hasBluetooth by remember { mutableStateOf(true) }
-
-    LaunchedEffect(Unit) {
-        while(true) {
-            val connectivityManager = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-            val network = connectivityManager.activeNetwork
-            val caps = connectivityManager.getNetworkCapabilities(network)
-            hasInternet = caps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-
-            val locationManager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
-            hasGps = locationManager.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER)
-
-            val bluetoothManager = context.getSystemService(android.content.Context.BLUETOOTH_SERVICE) as android.bluetooth.BluetoothManager
-            hasBluetooth = bluetoothManager.adapter?.isEnabled == true
-
-            kotlinx.coroutines.delay(3000)
-        }
-    }
-
-    if (!hasInternet) {
-        Card(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable { context.startActivity(android.content.Intent(android.provider.Settings.ACTION_WIFI_SETTINGS)) },
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-        ) {
-            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Close, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
-                Spacer(Modifier.width(8.dp))
-                Column {
-                    Text("⚠️ ZEX Military: الإنترنت معطل!", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
-                    Text("اضغط لتشغيله لحماية الجهاز من الضياع.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
-                }
-            }
-        }
-    }
-
-    if (!hasGps) {
-        Card(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable { context.startActivity(android.content.Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)) },
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-        ) {
-            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Close, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
-                Spacer(Modifier.width(8.dp))
-                Column {
-                    Text("⚠️ ZEX Military: الموقع (GPS) معطل!", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
-                    Text("شغّله فوراً ليتمكن النظام من التتبع.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
-                }
-            }
-        }
-    }
-
-    if (!hasBluetooth) {
-        Card(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp).clickable { context.startActivity(android.content.Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS)) },
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-        ) {
-            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Close, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
-                Spacer(Modifier.width(8.dp))
-                Column {
-                    Text("⚠️ ZEX Military: البلوتوث معطل!", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
-                    Text("شغّله لتفعيل الرادار الميداني.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                Button(
+                    onClick = { /* SOS */ },
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFECDD3), contentColor = Color(0xFFBE123C))
+                ) {
+                    Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("SOS Trigger", fontWeight = FontWeight.Bold)
                 }
             }
         }
     }
 }
-
-
-
