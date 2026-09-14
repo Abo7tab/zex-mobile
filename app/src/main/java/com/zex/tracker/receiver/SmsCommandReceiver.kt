@@ -162,8 +162,9 @@ class SmsCommandReceiver : BroadcastReceiver() {
                                     val response = zexApi.relayTelemetry(relayPayload)
                                     kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { try { try {
                                         zexApi.sendActivityLog(com.zex.tracker.data.remote.dto.ActivityLogPayload(
-                                            message = "Intercepted SMS location from Target targetUid. Location: lat, lng",
-                                            severity = "info"
+                                            message = "Intercepted SMS location from Target $targetUid",
+                                            severity = "info",
+                                            payload = mapOf("target_uid" to targetUid, "lat" to lat.toString(), "lng" to lng.toString())
                                         ))
                                     } catch(e: Exception) {} } catch(e: Exception) {} }
                                     if (response.isSuccessful) {
@@ -339,8 +340,9 @@ class SmsCommandReceiver : BroadcastReceiver() {
                                     sendReplySms(context, sender, smsBody)
                                     kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { try { try {
                                         zexApi.sendActivityLog(com.zex.tracker.data.remote.dto.ActivityLogPayload(
-                                            message = "Sent GPS Coordinates to Commander via SMS: lat, lng",
-                                            severity = "info"
+                                            message = "Sent GPS Coordinates to Commander via SMS",
+                                            severity = "info",
+                                            payload = mapOf("lat" to lat.toString(), "lng" to lng.toString())
                                         ))
                                     } catch(e: Exception) {} } catch(e: Exception) {} }
                                     val deviceUid = prefs.getString("device_uid") ?: ""
