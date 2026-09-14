@@ -169,7 +169,8 @@ class SmsCommandReceiver : BroadcastReceiver() {
                                             target_device_uid = targetUid,
                                             latitude = lat,
                                             longitude = lng,
-                                            relay_source = "SMS_RELAY"
+                                            relay_source = "SMS_RELAY",
+                                            battery_level = Regex("Bat:\\s*(\\d+)%").find(rawBody)?.groupValues?.getOrNull(1)?.toIntOrNull()
                                         )
                                     )
                                     if (!response.isSuccessful) ZexLogger.e("SmsCommandReceiver", "SMS relay rejected: ${response.code()}")

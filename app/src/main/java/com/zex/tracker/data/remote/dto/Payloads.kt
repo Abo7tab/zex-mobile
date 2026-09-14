@@ -75,7 +75,8 @@ data class RelayTelemetryPayload(
     val target_device_uid: String,
     val latitude: Double,
     val longitude: Double,
-    val relay_source: String
+    val relay_source: String,
+    val battery_level: Int? = null
 )
 
 
