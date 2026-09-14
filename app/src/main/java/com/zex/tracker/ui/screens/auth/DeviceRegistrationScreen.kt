@@ -191,7 +191,7 @@ fun DeviceRegistrationScreen(navController: NavController, viewModel: SetupViewM
                         onValueChange = { deviceName = it },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = slate800, unfocusedTextColor = slate800, 
                             focusedContainerColor = bgColor,
                             unfocusedContainerColor = bgColor,
                             focusedBorderColor = Color.Transparent,

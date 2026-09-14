@@ -73,7 +73,7 @@ fun LiveAuditTerminalBottomSheet(
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text("SYS//INPUT >", fontFamily = FontFamily.Monospace, color = Color(0xFF00FA9A).copy(alpha = 0.5f)) },
                 textStyle = androidx.compose.ui.text.TextStyle(fontFamily = FontFamily.Monospace, color = Color(0xFF00FA9A)),
-                colors = OutlinedTextFieldDefaults.colors(
+                colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color(0xFF1E293B), unfocusedTextColor = Color(0xFF1E293B), 
                     focusedBorderColor = Color(0xFF00F0FF),
                     unfocusedBorderColor = Color(0xFF00F0FF).copy(alpha = 0.3f)
                 ),

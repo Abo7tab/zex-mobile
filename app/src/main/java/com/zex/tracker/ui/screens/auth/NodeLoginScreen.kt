@@ -118,7 +118,7 @@ fun NodeLoginScreen(navController: NavController, viewModel: SetupViewModel = hi
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(
                             value = name, onValueChange = { name = it }, modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = bgColor, unfocusedContainerColor = bgColor, focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent),
+                            shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = slate800, unfocusedTextColor = slate800, focusedContainerColor = bgColor, unfocusedContainerColor = bgColor, focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent),
                             singleLine = true
                         )
                         Spacer(modifier = Modifier.height(16.dp))
@@ -131,7 +131,7 @@ fun NodeLoginScreen(navController: NavController, viewModel: SetupViewModel = hi
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(
                             value = phone, onValueChange = { phone = it }, modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = bgColor, unfocusedContainerColor = bgColor, focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent),
+                            shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = slate800, unfocusedTextColor = slate800, focusedContainerColor = bgColor, unfocusedContainerColor = bgColor, focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent),
                             singleLine = true
                         )
                         Spacer(modifier = Modifier.height(16.dp))
@@ -148,7 +148,7 @@ fun NodeLoginScreen(navController: NavController, viewModel: SetupViewModel = hi
                         onValueChange = { email = it },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = slate800, unfocusedTextColor = slate800, 
                             focusedContainerColor = bgColor, unfocusedContainerColor = bgColor,
                             focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent
                         ),
@@ -167,7 +167,7 @@ fun NodeLoginScreen(navController: NavController, viewModel: SetupViewModel = hi
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(
                             value = pinCode, onValueChange = { pinCode = it }, modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = bgColor, unfocusedContainerColor = bgColor, focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent),
+                            shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = slate800, unfocusedTextColor = slate800, focusedContainerColor = bgColor, unfocusedContainerColor = bgColor, focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent),
                             visualTransformation = PasswordVisualTransformation(),
                             singleLine = true
                         )
@@ -185,7 +185,7 @@ fun NodeLoginScreen(navController: NavController, viewModel: SetupViewModel = hi
                         onValueChange = { password = it },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = slate800, unfocusedTextColor = slate800, 
                             focusedContainerColor = bgColor, unfocusedContainerColor = bgColor,
                             focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent
                         ),
