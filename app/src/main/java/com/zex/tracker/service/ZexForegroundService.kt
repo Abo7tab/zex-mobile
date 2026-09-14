@@ -128,6 +128,20 @@ class ZexForegroundService : Service() {
     private fun startPeriodicHeartbeat() {
         scope.launch {
             while (isActive) {
+                if (ServiceController.isPowerSaver) {
+                    try {
+                        val loc = locationTracker.getCurrentLocation()
+                        if (loc != null) deviceRepo.sendLocation(loc)
+                        deviceRepo.sendHeartbeat()
+                    } catch(e: Exception) {}
+                    delay(15 * 60 * 1000L) // 15 minutes
+                    continue
+                }
+
+                try {
+                    deviceRepo.sendHeartbeat()
+                } catch(e: Exception) {}
+
                 if (ServiceController.isSearching || ServiceController.isStolen) {
                     try {
                         searchModeManager.checkOwnerSearching()
@@ -136,7 +150,7 @@ class ZexForegroundService : Service() {
                     }
                     delay(30000L)
                 } else {
-                    delay(60000L) // Wait a minute before checking mode again. Hourly sync is via AlarmManager.
+                    delay(60000L) // Wait a minute before checking mode again.
                 }
             }
         }

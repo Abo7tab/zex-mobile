@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
+import com.zex.tracker.ui.components.TargetSelectorTopBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -33,7 +35,7 @@ import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SmsControlScreen(navController: NavController, deviceName: String = "Redmi Note 8", phone: String = "+1234 567 8900") {
+fun SmsControlScreen(navController: NavController, deviceName: String = "Redmi Note 8", phone: String = "+1234 567 8900", viewModel: DashboardViewModel = hiltViewModel()) {
     var selectedCommand by remember { mutableStateOf("LOCATE") }
     var selectedSim by remember { mutableStateOf(1) } // 1 or 2
     val logs = remember { mutableStateListOf<String>() }
@@ -59,6 +61,8 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Redmi N
         }
     }
     
+    val devices by viewModel.devices.collectAsState()
+    val selectedDevice by viewModel.selectedDevice.collectAsState()
     val bgColor = Color(0xFFF8FAFC)
     val cardColor = Color(0xFFFFFFFF)
     val primaryColor = Color(0xFF2563EB)

@@ -1,8 +1,16 @@
 package com.zex.tracker.ui.screens.setup
 
+import android.Manifest
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,32 +19,95 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.zex.tracker.data.local.prefs.SecurePrefs
 import com.zex.tracker.core.constants.ZexConstants
+import com.zex.tracker.data.local.prefs.SecurePrefs
+import com.zex.tracker.receiver.ZexDeviceAdminReceiver
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SecurityGuideScreen(navController: NavController, prefs: SecurePrefs) {
     val context = LocalContext.current
+    val bgColor = Color(0xFFF1F5F9)
+    val cardColor = Color.White
+    val primaryColor = Color(0xFF2563EB)
+    val successColor = Color(0xFF10B981)
+    
     var showPin by remember { mutableStateOf(false) }
 
-    val bgColor = Color(0xFFF8FAFC)
-    val cardColor = Color(0xFFFFFFFF)
-    val primaryColor = Color(0xFF2563EB)
-    val successColor = Color(0xFF16A34A)
+    // State for permissions
+    var hasLocation by remember { mutableStateOf(false) }
+    var hasSms by remember { mutableStateOf(false) }
+    var hasBle by remember { mutableStateOf(false) }
+    var hasAdmin by remember { mutableStateOf(false) }
+    var hasBattery by remember { mutableStateOf(false) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { results ->
+        hasLocation = results[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        hasSms = results[Manifest.permission.RECEIVE_SMS] == true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            hasBle = results[Manifest.permission.BLUETOOTH_SCAN] == true
+        } else {
+            hasBle = results[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        }
+    }
+
+    val adminLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val adminComponent = ComponentName(context, ZexDeviceAdminReceiver::class.java)
+        hasAdmin = dpm.isAdminActive(adminComponent)
+    }
+
+    val batteryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        hasBattery = pm.isIgnoringBatteryOptimizations(context.packageName)
+    }
+
+    // Check initial states
+    LaunchedEffect(Unit) {
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val adminComponent = ComponentName(context, ZexDeviceAdminReceiver::class.java)
+        hasAdmin = dpm.isAdminActive(adminComponent)
+
+        val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        hasBattery = pm.isIgnoringBatteryOptimizations(context.packageName)
+
+        val permissionsToRequest = mutableListOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.RECEIVE_SMS,
+            Manifest.permission.SEND_SMS
+        )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            permissionsToRequest.add(Manifest.permission.BLUETOOTH_SCAN)
+            permissionsToRequest.add(Manifest.permission.BLUETOOTH_ADVERTISE)
+            permissionsToRequest.add(Manifest.permission.BLUETOOTH_CONNECT)
+        }
+
+        permissionLauncher.launch(permissionsToRequest.toTypedArray())
+    }
+
+    val allDone = hasLocation && hasSms && hasBle && hasAdmin && hasBattery
 
     Scaffold(
         containerColor = bgColor
@@ -45,154 +116,36 @@ fun SecurityGuideScreen(navController: NavController, prefs: SecurePrefs) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 20.dp, vertical = 24.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState())
         ) {
-            // Top Section
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = primaryColor.copy(alpha = 0.1f),
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Shield,
-                            contentDescription = "Shield",
-                            tint = primaryColor,
-                            modifier = Modifier.padding(8.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text("ZEX C4ISR", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = Color(0xFF1E293B))
-                        Text("Field Terminal 4092", fontSize = 12.sp, color = Color(0xFF64748B))
-                    }
-                }
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = successColor.copy(alpha = 0.15f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = successColor, modifier = Modifier.size(12.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("DEFCON-3 SECURE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = successColor)
-                    }
-                }
-            }
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            // Header
+            Text(
+                "SYSTEM HARDENING",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = primaryColor,
+                letterSpacing = 1.sp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "Verify Tactical Access",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color(0xFF0F172A),
+                lineHeight = 34.sp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "The node requires deep OS integration to guarantee 100% telemetry uptime and tamper resistance.",
+                fontSize = 14.sp,
+                color = Color(0xFF64748B),
+                lineHeight = 20.sp
+            )
 
             Spacer(modifier = Modifier.height(32.dp))
-
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text("Device Onboarding & Setup", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("Hardware identity and telemetry authorization", fontSize = 14.sp, color = Color(0xFF64748B))
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Card 1 (API & PIN)
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = cardColor),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("C4ISR ENDPOINT", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B), letterSpacing = 1.sp)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Lock, contentDescription = null, tint = successColor, modifier = Modifier.size(12.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("TLS 1.3 Verified (14ms)", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = successColor)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    OutlinedTextField(
-                        value = "https://zex.alwaysdata.net/api",
-                        onValueChange = {},
-                        readOnly = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Color(0xFFF8FAFC),
-                            unfocusedContainerColor = Color(0xFFF8FAFC),
-                            focusedBorderColor = Color.Transparent,
-                            unfocusedBorderColor = Color.Transparent,
-                        ),
-                        trailingIcon = {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = successColor,
-                                modifier = Modifier.padding(end = 8.dp)
-                            ) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.padding(4.dp).size(16.dp))
-                            }
-                        }
-                    )
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("OPERATOR SECURITY PIN", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B), letterSpacing = 1.sp)
-                        TextButton(
-                            onClick = { showPin = !showPin },
-                            contentPadding = PaddingValues(0.dp),
-                            modifier = Modifier.height(24.dp)
-                        ) {
-                            Text(if (showPin) "Hide" else "Show", fontSize = 12.sp, color = primaryColor)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        repeat(6) {
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = Color(0xFFF1F5F9),
-                                modifier = Modifier
-                                    .size(42.dp)
-                                    .aspectRatio(1f)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    if (showPin) {
-                                        Text("*", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
-                                    } else {
-                                        Box(modifier = Modifier.size(8.dp).background(Color(0xFF0F172A), RoundedCornerShape(50)))
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text("6-digit tactical PIN assigned in web console", fontSize = 11.sp, color = Color(0xFF94A3B8))
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
 
             // Card 2 (Capabilities)
             Card(
@@ -208,20 +161,35 @@ fun SecurityGuideScreen(navController: NavController, prefs: SecurePrefs) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text("SYSTEM CAPABILITIES", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B), letterSpacing = 1.sp)
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = successColor.copy(alpha = 0.15f)
-                        ) {
-                            Text("4/4 Active", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = successColor, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
-                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    CapabilityRow("Background Location", "GPS & Galileo telemetry", successColor)
-                    CapabilityRow("Offline SMS Receiver", "Encrypted command channel", successColor)
-                    CapabilityRow("BLE Radar Broadcaster", "Offline mesh discovery", successColor)
-                    CapabilityRow("Device Admin Protection", "Lockdown and tamper protection", successColor, isLast = true)
+                    CapabilityRow("Background Location", "GPS & Galileo telemetry", successColor, hasLocation) {
+                        val permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                        permissionLauncher.launch(permissions)
+                    }
+                    CapabilityRow("Offline SMS", "Encrypted command channel", successColor, hasSms) {
+                        val permissions = arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.SEND_SMS)
+                        permissionLauncher.launch(permissions)
+                    }
+                    CapabilityRow("BLE Radar", "Offline mesh discovery", successColor, hasBle) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            permissionLauncher.launch(arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_CONNECT))
+                        }
+                    }
+                    CapabilityRow("Device Admin", "Lockdown protection", successColor, hasAdmin) {
+                        val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
+                        val adminComponent = ComponentName(context, ZexDeviceAdminReceiver::class.java)
+                        intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
+                        intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Required for Remote Wipe and Screen Lock.")
+                        adminLauncher.launch(intent)
+                    }
+                    CapabilityRow("Ignore Battery Limits", "Ensures 100% uptime", successColor, hasBattery, isLast = true) {
+                        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                        intent.data = Uri.parse("package:${context.packageName}")
+                        batteryLauncher.launch(intent)
+                    }
                 }
             }
 
@@ -239,31 +207,22 @@ fun SecurityGuideScreen(navController: NavController, prefs: SecurePrefs) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = primaryColor),
+                enabled = allDone,
+                colors = ButtonDefaults.buttonColors(containerColor = primaryColor, disabledContainerColor = Color(0xFFCBD5E1)),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("COMPLETE NODE BINDING", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Lock, contentDescription = null, tint = successColor, modifier = Modifier.size(12.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    "Protected by AES-256 GCM Hardware Enclave & Zero-Trust Protocol",
-                    fontSize = 10.sp,
-                    color = Color(0xFF94A3B8),
-                    textAlign = TextAlign.Center
-                )
+                Text(if(allDone) "COMPLETE NODE BINDING" else "WAITING FOR PERMISSIONS", fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
         }
     }
 }
 
 @Composable
-fun CapabilityRow(title: String, subtitle: String, successColor: Color, isLast: Boolean = false) {
+fun CapabilityRow(title: String, subtitle: String, successColor: Color, isGranted: Boolean, isLast: Boolean = false, onClick: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(bottom = if (isLast) 0.dp else 20.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = if (isLast) 0.dp else 20.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -273,7 +232,6 @@ fun CapabilityRow(title: String, subtitle: String, successColor: Color, isLast: 
                 color = Color(0xFFF1F5F9),
                 modifier = Modifier.size(40.dp)
             ) {
-                // Generic icon for all since we don't have access to custom drawables easily
                 Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF64748B), modifier = Modifier.padding(10.dp))
             }
             Spacer(modifier = Modifier.width(12.dp))
@@ -282,6 +240,12 @@ fun CapabilityRow(title: String, subtitle: String, successColor: Color, isLast: 
                 Text(subtitle, fontSize = 12.sp, color = Color(0xFF64748B))
             }
         }
-        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = successColor, modifier = Modifier.size(20.dp))
+        if (isGranted) {
+            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = successColor, modifier = Modifier.size(24.dp))
+        } else {
+            Button(onClick = onClick, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F172A)), shape = RoundedCornerShape(8.dp), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp), modifier = Modifier.height(32.dp)) {
+                Text("FIX", fontSize = 12.sp)
+            }
+        }
     }
 }

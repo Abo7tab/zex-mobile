@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
+import com.zex.tracker.ui.components.TargetSelectorTopBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +39,8 @@ fun BleRadarScreen(navController: NavController, deviceName: String = "RMX2020",
     var isScanning by remember { mutableStateOf(true) }
     val blips = remember { mutableStateListOf<RadarBlip>() }
     
+    val devices by viewModel.devices.collectAsState()
+    val selectedDevice by viewModel.selectedDevice.collectAsState()
     val bgColor = Color(0xFFF8FAFC)
     val cardColor = Color(0xFFFFFFFF)
     val primaryColor = Color(0xFF2563EB)

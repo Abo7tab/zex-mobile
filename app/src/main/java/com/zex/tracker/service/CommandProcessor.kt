@@ -71,6 +71,14 @@ class CommandProcessor @Inject constructor(
                     context.sendBroadcast(Intent(com.zex.tracker.core.constants.ZexConstants.ACTION_STOP_SCREAM))
                 }
                 "STATUS" -> handleStatus()
+                "POWER_SAVER_ON" -> {
+                    prefs.putBoolean("isPowerSaver", true)
+                    ServiceController.isPowerSaver = true
+                }
+                "POWER_SAVER_OFF" -> {
+                    prefs.putBoolean("isPowerSaver", false)
+                    ServiceController.isPowerSaver = false
+                }
                 "PHOTO" -> ZexLogger.w("CommandProcessor", "PHOTO ignored by rule")
             }
             

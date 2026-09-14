@@ -16,6 +16,7 @@ class ServiceController @Inject constructor(@ApplicationContext private val cont
         @Volatile var isScreaming: Boolean = false
         @Volatile var isStolen: Boolean = false
         @Volatile var isSearching: Boolean = false
+        @Volatile var isPowerSaver: Boolean = false
     }
 
     fun startProtection() {

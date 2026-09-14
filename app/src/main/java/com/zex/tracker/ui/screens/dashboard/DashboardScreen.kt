@@ -11,6 +11,8 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
+import com.zex.tracker.ui.components.TacticalMapView
+import com.zex.tracker.ui.components.TargetSelectorTopBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +36,8 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val devices by viewModel.devices.collectAsState()
+    val selectedDevice by viewModel.selectedDevice.collectAsState()
     var isRunning by remember { mutableStateOf(ZexForegroundService.isRunning) }
     var isBleEnabled by remember { mutableStateOf(true) }
     var isSmsEnabled by remember { mutableStateOf(true) }
@@ -50,7 +54,8 @@ fun DashboardScreen(
     }
 
     Scaffold(
-        containerColor = bgColor
+        containerColor = bgColor,
+        topBar = { TargetSelectorTopBar(devices = devices, selectedDevice = selectedDevice, onDeviceSelected = { viewModel.selectDevice(it) }) }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -287,6 +292,10 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            Card(modifier = Modifier.fillMaxWidth().height(250.dp), shape = RoundedCornerShape(12.dp)) { TacticalMapView(targetLat = 30.0, targetLng = 31.0) }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             // Terminal
             Card(
                 shape = RoundedCornerShape(12.dp),
@@ -320,7 +329,7 @@ fun DashboardScreen(
             // Bottom Buttons
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(
-                    onClick = { /* Force Sync */ },
+                    onClick = { navController.navigate("sms_control") },
                     modifier = Modifier.weight(1f).height(48.dp),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = primaryColor.copy(alpha = 0.15f), contentColor = primaryColor)
@@ -331,7 +340,7 @@ fun DashboardScreen(
                 }
 
                 Button(
-                    onClick = { /* SOS */ },
+                    onClick = { navController.navigate("radar/target") },
                     modifier = Modifier.weight(1f).height(48.dp),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFECDD3), contentColor = Color(0xFFBE123C))

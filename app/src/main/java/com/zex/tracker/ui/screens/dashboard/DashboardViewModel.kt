@@ -25,6 +25,14 @@ class DashboardViewModel @Inject constructor(
 
     private val _devices = MutableStateFlow<List<DeviceDto>>(emptyList())
     val devices: StateFlow<List<DeviceDto>> = _devices
+
+    private val _selectedDevice = MutableStateFlow<DeviceDto?>(null)
+    val selectedDevice: StateFlow<DeviceDto?> = _selectedDevice
+
+    fun selectDevice(device: DeviceDto) {
+        _selectedDevice.value = device
+        prefs.putString("selected_target_uid", device.device_uid ?: "")
+    }
     
     val bleFoundDevices = bleManager.foundDevices
 
@@ -35,6 +43,10 @@ class DashboardViewModel @Inject constructor(
                 if (response.isSuccessful) {
                     response.body()?.data?.let {
                         _devices.value = it
+                        if (_selectedDevice.value == null && it.isNotEmpty()) {
+                            val savedUid = prefs.getString("selected_target_uid", "")
+                            _selectedDevice.value = it.find { d -> d.device_uid == savedUid } ?: it.first()
+                        }
                     }
                 }
             } catch (e: Exception) {
