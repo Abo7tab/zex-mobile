@@ -257,6 +257,32 @@ fun DashboardScreen(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp)
                     ) { Text("Open BLE Search Radar", color = primaryColor, fontSize = 12.sp) }
 
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDF4)),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text("LAST BLE CONTACT", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
+                            if (lastBlePeer == null) {
+                                Text("No nearby signal yet", fontSize = 12.sp, color = Color(0xFF475569))
+                                Text("Keep Bluetooth enabled while searching.", fontSize = 11.sp, color = Color(0xFF64748B))
+                            } else {
+                                val peer = lastBlePeer!!
+                                val distance = peer.distanceMeters
+                                val distanceText = when {
+                                    distance == null -> "Distance unavailable"
+                                    distance >= 1000.0 -> "%.2f km".format(distance / 1000.0)
+                                    distance >= 100.0 -> ">100 m"
+                                    else -> "%.1f m".format(distance)
+                                }
+                                Text(selectedDevice?.device_name ?: "Nearby ZEX device", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                                Text("Approximate distance: $distanceText", fontSize = 13.sp, color = Color(0xFF15803D))
+                                Text(if (peer.uploaded) "Location sent to Dashboard" else "Waiting to upload location", fontSize = 11.sp, color = Color(0xFF64748B))
+                            }
+                        }
+                    }
+
                     HorizontalDivider()
 
                     // SMS Listener
