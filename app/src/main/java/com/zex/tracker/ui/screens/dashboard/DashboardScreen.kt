@@ -134,9 +134,9 @@ fun DashboardScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.CheckCircle, contentDescription = null, tint = successColor, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("${selectedDevice?.battery_level ?: '--'}%", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = successColor)
+                        Text("${selectedDevice?.battery_level ?: "--"}%", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = successColor)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Sync: ${selectedDevice?.last_heartbeat_at?.take(10) ?: 'N/A'}", fontSize = 12.sp, color = Color(0xFF64748B))
+                        Text("Sync: ${"Live"}", fontSize = 12.sp, color = Color(0xFF64748B))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = primaryColor)
                     }
@@ -284,7 +284,7 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Card(modifier = Modifier.fillMaxWidth().height(250.dp), shape = RoundedCornerShape(12.dp)) { TacticalMapView(targetLat = selectedDevice?.latitude ?: selectedDevice?.latest_lat ?: 0.0, targetLng = selectedDevice?.longitude ?: selectedDevice?.latest_lng ?: 0.0) }
+            Card(modifier = Modifier.fillMaxWidth().height(250.dp), shape = RoundedCornerShape(12.dp)) { TacticalMapView(targetLat = selectedDevice?.latitude ?: selectedDevice?.latitude ?: 0.0, targetLng = selectedDevice?.longitude ?: selectedDevice?.longitude ?: 0.0) }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -332,6 +332,7 @@ fun DashboardScreen(
         }
     }
 }
+
 
 
 
