@@ -310,7 +310,7 @@ fun DashboardScreen(
                     }
                     Divider(color = Color(0xFF334155), modifier = Modifier.padding(vertical = 12.dp))
                     
-                    Text("GPS_FIX: Lat ${selectedDevice?.latest_lat ?: '--'}, Lon ${selectedDevice?.latest_lng ?: '--'} (±2.1m)", fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = terminalText, modifier = Modifier.padding(bottom = 6.dp))
+                    Text("GPS_FIX: Lat ${selectedDevice?.latitude ?: "--"}, Lon ${selectedDevice?.longitude ?: "--"} (±2.1m)", fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = terminalText, modifier = Modifier.padding(bottom = 6.dp))
                     Text("Command Queue Active", fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = terminalText, modifier = Modifier.padding(bottom = 6.dp))
                     Text("Secure Boot Passed", fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = Color(0xFF64748B))
                 }
@@ -332,6 +332,7 @@ fun DashboardScreen(
         }
     }
 }
+
 
 
 
