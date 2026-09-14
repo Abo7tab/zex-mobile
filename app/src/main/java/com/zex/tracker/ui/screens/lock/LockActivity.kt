@@ -35,7 +35,7 @@ class LockActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         val disarmReceiver = object : android.content.BroadcastReceiver() {
-            override fun receive(context: android.content.Context, intent: android.content.Intent) {
+            override fun onReceive(context: android.content.Context, intent: android.content.Intent) {
                 if (intent.action == "com.zex.tracker.DISARM") finish()
             }
         }

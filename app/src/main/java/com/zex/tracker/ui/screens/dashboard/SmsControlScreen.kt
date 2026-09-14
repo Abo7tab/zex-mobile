@@ -75,6 +75,7 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Redmi N
     val dangerColor = Color(0xFFDC2626)
     
     Scaffold(
+        topBar = { TargetSelectorTopBar(viewModel = viewModel, onBack = { navController.navigateUp() }) },
         containerColor = bgColor,
         topBar = {
             TopAppBar(
