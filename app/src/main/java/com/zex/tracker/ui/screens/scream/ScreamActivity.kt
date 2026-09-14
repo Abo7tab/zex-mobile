@@ -265,7 +265,7 @@ class ScreamActivity : ComponentActivity() {
                                 val storedPin = prefs.getString(ZexConstants.KEY_PIN_CODE)
                                 val storedPass = prefs.getString(ZexConstants.KEY_OWNER_PASSWORD)
                                 
-                                if (pinInput == storedSecret || pinInput == storedPin || pinInput == storedPass || pinInput == "357005" || pinInput == "medo@1212") {
+                                if (pinInput == storedSecret || pinInput == storedPin || pinInput == storedPass ) {
                                     screamManager.stopScream()
                                     ServiceController.isScreaming = false
                                     CoroutineScope(Dispatchers.IO).launch {
