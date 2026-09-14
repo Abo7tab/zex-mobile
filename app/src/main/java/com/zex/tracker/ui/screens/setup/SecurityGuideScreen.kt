@@ -200,7 +200,7 @@ fun SecurityGuideScreen(navController: NavController, prefs: SecurePrefs) {
                 onClick = {
                     prefs.putBoolean(ZexConstants.KEY_IS_SETUP_COMPLETE, true)
                     com.zex.tracker.service.ZexForegroundService.startService(context)
-                    navController.navigate("role_select") {
+                    navController.navigate("dashboard") {
                         popUpTo(0)
                     }
                 },

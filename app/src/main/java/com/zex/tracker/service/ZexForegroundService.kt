@@ -43,7 +43,6 @@ class ZexForegroundService : Service() {
     @Inject lateinit var firebaseListener: FirebaseCommandListener
     @Inject lateinit var scheduler: Scheduler
     @Inject lateinit var searchModeManager: SearchModeManager
-    @Inject lateinit var bleManager: com.zex.tracker.security.ble.ZexBleManager
 
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.IO + job)
@@ -121,8 +120,6 @@ class ZexForegroundService : Service() {
             locationTracker.stopContinuous()
         }
 
-        bleManager.startScanning()
-        bleManager.startAdvertising() // Always advertise for ZEX Mesh
     }
 
     private fun startPeriodicHeartbeat() {
@@ -245,8 +242,6 @@ class ZexForegroundService : Service() {
         }
         
         locationTracker.stopContinuous()
-        bleManager.stopScanning()
-        // bleManager.stopAdvertising()
         firebaseListener.stopListening()
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {

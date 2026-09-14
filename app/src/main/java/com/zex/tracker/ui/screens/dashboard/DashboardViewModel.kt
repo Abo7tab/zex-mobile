@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.zex.tracker.core.logging.LiveTerminalLogger
-import com.zex.tracker.security.ble.ZexBleManager
 
 import com.zex.tracker.core.constants.ZexConstants
 import com.zex.tracker.data.local.prefs.SecurePrefs
@@ -19,7 +18,6 @@ import com.zex.tracker.data.local.prefs.SecurePrefs
 class DashboardViewModel @Inject constructor(
     val terminalLogger: LiveTerminalLogger,
     private val zexApi: ZexApi,
-    private val bleManager: ZexBleManager,
     private val prefs: SecurePrefs
 ) : ViewModel() {
 
@@ -33,8 +31,6 @@ class DashboardViewModel @Inject constructor(
         _selectedDevice.value = device
         prefs.putString("selected_target_uid", device.device_uid ?: "")
     }
-    
-    val bleFoundDevices = bleManager.foundDevices
 
     fun fetchDevices() {
         viewModelScope.launch {
@@ -53,14 +49,6 @@ class DashboardViewModel @Inject constructor(
                 e.printStackTrace()
             }
         }
-    }
-
-    fun startBleScan() {
-        try { bleManager.startScanning() } catch (e: Exception) {}
-    }
-
-    fun stopBleScan() {
-        try { bleManager.stopScanning() } catch (e: Exception) {}
     }
 
     fun pingDevice(targetHash: String = "") {

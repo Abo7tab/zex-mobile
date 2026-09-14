@@ -54,8 +54,11 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Redmi N
             if (activeInfos != null) {
                 activeInfos.forEachIndexed { index, info ->
                     val carrierName = info.carrierName?.toString() ?: "SIM ${index + 1}"
-                    if (index == 0) sim1Name = carrierName
-                    if (index == 1) sim2Name = carrierName
+                    @Suppress("DEPRECATION")
+                    val num = if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_NUMBERS) == PackageManager.PERMISSION_GRANTED) info.number else null
+                    val displayName = if (!num.isNullOrBlank()) "$carrierName ($num)" else carrierName
+                    if (index == 0) sim1Name = displayName
+                    if (index == 1) sim2Name = displayName
                 }
             }
         }
@@ -65,6 +68,7 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Redmi N
     val selectedDevice by viewModel.selectedDevice.collectAsState()
     val currentDeviceName = selectedDevice?.device_name ?: selectedDevice?.device_uid ?: deviceName
     val currentPhone = selectedDevice?.phone_number ?: phone
+    var manualPhone by remember(currentPhone) { mutableStateOf(currentPhone) }
     val bgColor = Color(0xFFF8FAFC)
     val cardColor = Color(0xFFFFFFFF)
     val primaryColor = Color(0xFF2563EB)
@@ -100,7 +104,6 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Redmi N
                 TargetSelectorTopBar(devices = devices, selectedDevice = selectedDevice, onDeviceSelected = { viewModel.selectDevice(it) })
             }
         },
-        bottomBar = { TacticalBottomNavBar() }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -118,7 +121,14 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Redmi N
                 Column(modifier = Modifier.weight(1f)) {
                     Text("REGISTERED TARGET", fontSize = 10.sp, color = slate800, fontWeight = FontWeight.Bold)
                     Text(currentDeviceName, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = slate900)
-                    Text(currentPhone, fontSize = 12.sp, color = slate800)
+                    OutlinedTextField(
+                        value = manualPhone,
+                        onValueChange = { manualPhone = it },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = slate800, unfocusedTextColor = slate800),
+                        singleLine = true
+                    )
                 }
                 Surface(shape = RoundedCornerShape(50), color = primaryColor.copy(alpha = 0.1f), modifier = Modifier.size(36.dp)) {
                     Icon(Icons.Default.GpsFixed, contentDescription = null, tint = primaryColor, modifier = Modifier.padding(8.dp))
@@ -275,16 +285,30 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Redmi N
                     scope.launch {
                         val payloadPin = selectedDevice?.alarm_secret ?: "000000"
                         val payloadStr = "#ZEX#$payloadPin#$selectedCommand"
-                        logs.add("[${getTimestamp()}] Preparing payload: $payloadStr...")
+                        val maskedPayloadStr = "#ZEX#******#$selectedCommand"
+                        logs.add("[${getTimestamp()}] Preparing payload: $maskedPayloadStr...")
                         delay(600)
                         val simName = if (selectedSim == 1) sim1Name else sim2Name
                         logs.add("[${getTimestamp()}] Dispatching via SIM $selectedSim ($simName)...")
                         delay(1200)
                         
                         try {
-                            val smsManager = android.telephony.SmsManager.getDefault()
-                            smsManager.sendTextMessage(currentPhone, null, payloadStr, null, null)
-                            logs.add("[\${getTimestamp()}] ⚡ SMS DELIVERED to \$currentPhone via Default SIM.")
+                            var smsManager = android.telephony.SmsManager.getDefault()
+                            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
+                                val sm = context.getSystemService(SubscriptionManager::class.java)
+                                val activeInfos = sm.activeSubscriptionInfoList
+                                val subId = activeInfos?.getOrNull(selectedSim - 1)?.subscriptionId
+                                if (subId != null) {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                        smsManager = context.getSystemService(android.telephony.SmsManager::class.java).createForSubscriptionId(subId)
+                                    } else {
+                                        @Suppress("DEPRECATION")
+                                        smsManager = android.telephony.SmsManager.getSmsManagerForSubscriptionId(subId)
+                                    }
+                                }
+                            }
+                            smsManager.sendTextMessage(manualPhone, null, payloadStr, null, null)
+                            logs.add("[\${getTimestamp()}] ⚡ SMS DELIVERED to \$manualPhone via SIM \$selectedSim.")
                         } catch (e: Exception) {
                             logs.add("[\${getTimestamp()}] ❌ ERROR: Failed to send SMS. Check permissions or SIM credit.")
                             logs.add("[\${getTimestamp()}] Details: \${e.message}")

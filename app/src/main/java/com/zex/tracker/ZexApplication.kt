@@ -42,6 +42,9 @@ class ZexApplication : Application(), Configuration.Provider {
             ZexLogger.crash("Uncaught exception in thread ${thread.name}", throwable)
             defaultHandler?.uncaughtException(thread, throwable)
         }
+
+        // Initialize Osmdroid to prevent gray grid maps
+        org.osmdroid.config.Configuration.getInstance().userAgentValue = BuildConfig.APPLICATION_ID
     }
 
     /**

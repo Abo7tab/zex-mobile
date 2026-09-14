@@ -49,8 +49,21 @@ fun DashboardScreen(
     val terminalBg = Color(0xFF1E293B)
     val terminalText = Color(0xFF34D399)
 
+    val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()) {}
+
     LaunchedEffect(Unit) {
         viewModel.fetchDevices()
+        permissionLauncher.launch(
+            arrayOf(
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                android.Manifest.permission.READ_PHONE_STATE,
+                android.Manifest.permission.READ_PHONE_NUMBERS,
+                android.Manifest.permission.SEND_SMS,
+                android.Manifest.permission.RECEIVE_SMS,
+                android.Manifest.permission.READ_SMS
+            ) + if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) arrayOf(android.Manifest.permission.POST_NOTIFICATIONS) else emptyArray()
+        )
     }
 
     Scaffold(
@@ -209,28 +222,7 @@ fun DashboardScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column {
-                    // Row 1
-                    Row(
-                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Info, contentDescription = null, tint = primaryColor, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text("BLE Radar Beacon", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF0F172A))
-                                Text("UUID: 4C495352 • Tx: +4dBm (~45m)", fontSize = 11.sp, color = Color(0xFF64748B), fontFamily = FontFamily.Monospace)
-                            }
-                        }
-                        Switch(
-                            checked = isBleEnabled,
-                            onCheckedChange = { isBleEnabled = it },
-                            colors = SwitchDefaults.colors(checkedTrackColor = primaryColor)
-                        )
-                    }
-                    Divider(color = Color(0xFFF1F5F9))
-                    // Row 2
+                    // SMS Listener
                     Row(
                         modifier = Modifier.padding(16.dp).fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -327,28 +319,15 @@ fun DashboardScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Bottom Buttons
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(
-                    onClick = { navController.navigate("sms_control") },
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = primaryColor.copy(alpha = 0.15f), contentColor = primaryColor)
-                ) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Force Sync", fontWeight = FontWeight.Bold)
-                }
-
-                Button(
-                    onClick = { navController.navigate("radar/target") },
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFECDD3), contentColor = Color(0xFFBE123C))
-                ) {
-                    Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("SOS Trigger", fontWeight = FontWeight.Bold)
-                }
+            Button(
+                onClick = { navController.navigate("sms_control") },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = primaryColor.copy(alpha = 0.15f), contentColor = primaryColor)
+            ) {
+                Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("SMS Dispatch", fontWeight = FontWeight.Bold)
             }
         }
     }

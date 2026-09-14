@@ -29,16 +29,8 @@ fun ZexNavHost(prefs: SecurePrefs) {
         composable("security_guide") {
             com.zex.tracker.ui.screens.setup.SecurityGuideScreen(navController, prefs)
         }
-        composable("role_select") { com.zex.tracker.ui.screens.setup.RoleSelectScreen(navController, prefs) }
         composable("sms_control") { com.zex.tracker.ui.screens.dashboard.SmsControlScreen(navController) }
         composable("dashboard") { DashboardScreen(prefs, navController) }
-        composable(
-            route = "radar/{deviceName}",
-            arguments = listOf(androidx.navigation.navArgument("deviceName") { type = androidx.navigation.NavType.StringType })
-        ) { backStackEntry ->
-            val deviceName = backStackEntry.arguments?.getString("deviceName") ?: "ZEX-NODE"
-            com.zex.tracker.ui.screens.dashboard.BleRadarScreen(navController, deviceName)
-        }
         composable("settings") { com.zex.tracker.ui.screens.settings.SettingsScreen(navController, prefs) }
     }
 }
