@@ -35,7 +35,7 @@ import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SmsControlScreen(navController: NavController, deviceName: String = "Redmi Note 8", phone: String = "+1234 567 8900", viewModel: DashboardViewModel = hiltViewModel()) {
+fun SmsControlScreen(navController: NavController, deviceName: String = "Unknown Device", phone: String = "", viewModel: DashboardViewModel = hiltViewModel()) {
     var selectedCommand by remember { mutableStateOf("LOCATE") }
     var selectedSim by remember { mutableStateOf(1) } // 1 or 2
     val logs = remember { mutableStateListOf<String>() }

@@ -40,7 +40,7 @@ data class HeartbeatResponsePayload(
     val pending_commands: List<CommandDto>? = null,
     val owner_is_searching: Boolean = false,
     val search_interval_seconds: Int = 30,
-    
+    val is_power_saver: Boolean = false
 )
 
 data class DeviceStatusPayload(

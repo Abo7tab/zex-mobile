@@ -129,14 +129,14 @@ class ZexForegroundService : Service() {
                     try {
                         val loc = locationTracker.getCurrentLocation()
                         if (loc != null) deviceRepo.sendLocation(loc)
-                        deviceRepo.sendHeartbeat()
+                        val res = deviceRepo.sendHeartbeat(); if (res is com.zex.tracker.data.remote.ApiResult.Success) { ServiceController.isPowerSaver = res.data.is_power_saver }
                     } catch(e: Exception) {}
                     delay(15 * 60 * 1000L) // 15 minutes
                     continue
                 }
 
                 try {
-                    deviceRepo.sendHeartbeat()
+                    val res = deviceRepo.sendHeartbeat(); if (res is com.zex.tracker.data.remote.ApiResult.Success) { ServiceController.isPowerSaver = res.data.is_power_saver }
                 } catch(e: Exception) {}
 
                 if (ServiceController.isSearching || ServiceController.isStolen) {
@@ -256,3 +256,4 @@ class ZexForegroundService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 }
+

@@ -329,9 +329,12 @@ class SmsCommandReceiver : BroadcastReceiver() {
                                     val lat = location.latitude
                                     val lng = location.longitude
                                     val deviceName = prefs.getString("device_name") ?: android.os.Build.MODEL
-                                    val smsBody = "ZEX Alert [$deviceName] GPS: ${lat},${lng} (Bat: ${batteryLevel}%)"
-                                    
+                                    val smsBody = "ZEX Alert [$deviceName] GPS: https://maps.google.com/?q=${lat},${lng} (Bat: ${batteryLevel}%)"
                                     sendReplySms(context, sender, smsBody)
+                                    val deviceUid = prefs.getString("device_uid") ?: ""
+                                    if (deviceUid.isNotEmpty()) {
+                                        sendReplySms(context, sender, "#ZEX#LOC#$lat#$lng#$deviceUid")
+                                    }
                                     
                                     try {
                                         deviceRepo.sendLocation(location)
@@ -378,4 +381,5 @@ class SmsCommandReceiver : BroadcastReceiver() {
         }
     }
 }
+
 

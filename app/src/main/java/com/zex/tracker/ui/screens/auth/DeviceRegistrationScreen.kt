@@ -29,7 +29,7 @@ import java.util.UUID
 @Composable
 fun DeviceRegistrationScreen(navController: NavController, viewModel: SetupViewModel = hiltViewModel()) {
     val context = LocalContext.current
-    var deviceName by remember { mutableStateOf("Alpha-1 Recon Phone") }
+    var deviceName by remember { mutableStateOf(android.os.Build.MODEL) }
     var smsWakeup by remember { mutableStateOf(true) }
     
     val state by viewModel.uiState.collectAsState()
