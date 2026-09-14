@@ -66,7 +66,9 @@ class ZexForegroundService : Service() {
         startForeground(1001, createNotification())
         
         firebaseListener.startListening()
-        if (ServiceController.isSearching || ServiceController.isStolen) bleMeshManager.startRadar()
+        // Keep every registered phone discoverable to an authenticated ZEX radar.
+        // The manager no-ops when Bluetooth or the required runtime permissions are unavailable.
+        bleMeshManager.startRadar()
         scheduler.scheduleHourlyChecks()
         
         // Initial boot/start check
