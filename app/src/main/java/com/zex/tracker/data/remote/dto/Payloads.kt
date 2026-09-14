@@ -21,7 +21,8 @@ data class BleRelayPayload(
     val latitude: Double,
     val longitude: Double,
     val accuracy: Float,
-    val battery_level: Int
+    val battery_level: Int,
+    val distance_meters: Double? = null
 )
 
 data class HeartbeatPayload(

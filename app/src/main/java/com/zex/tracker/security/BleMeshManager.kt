@@ -179,11 +179,13 @@ class BleMeshManager @Inject constructor(
         val requestedTarget = targetHash
         if (requestedTarget != null && decoded.hash != requestedTarget) return
         val now = System.currentTimeMillis()
-        if (now - (uploadedAt[decoded.hash] ?: 0L) < 30_000L) return
+        val distance = estimateDistance(rssi)
+        _state.value = Peer(decoded.hash, decoded.latitude, decoded.longitude, decoded.battery, distance, false)
+        if (now - (uploadedAt[decoded.hash] ?: 0L) < 180_000L) return
         uploadedAt[decoded.hash] = now
         scope.launch {
             val result = try {
-                api.sendBleRelayLocation(BleRelayPayload(decoded.hash, decoded.latitude, decoded.longitude, decoded.accuracy, decoded.battery))
+                api.sendBleRelayLocation(BleRelayPayload(decoded.hash, decoded.latitude, decoded.longitude, decoded.accuracy, decoded.battery, distance))
             } catch (e: Exception) { ZexLogger.e("BleMeshManager", "BLE relay failed", e); null }
             val uploaded = result is retrofit2.Response<*> && result.isSuccessful
             if (uploaded) {
@@ -197,7 +199,8 @@ class BleMeshManager @Inject constructor(
                             "target_uid" to decoded.hash,
                             "source" to "BLE_RELAY",
                             "battery" to decoded.battery.toString(),
-                            "accuracy" to decoded.accuracy.toString()
+                            "accuracy" to decoded.accuracy.toString(),
+                            "distance_meters" to (distance?.toString() ?: "")
                         )
                     ))
                 } catch (e: Exception) {
