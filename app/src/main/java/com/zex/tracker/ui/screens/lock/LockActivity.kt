@@ -5,8 +5,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -14,9 +18,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,20 +38,23 @@ import kotlinx.coroutines.delay
 class LockActivity : ComponentActivity() {
 
     @Inject lateinit var prefs: SecurePrefs
+    
+    private var disarmReceiver: android.content.BroadcastReceiver? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        val disarmReceiver = object : android.content.BroadcastReceiver() {
+        val receiver = object : android.content.BroadcastReceiver() {
             override fun onReceive(context: android.content.Context, intent: android.content.Intent) {
                 if (intent.action == "com.zex.tracker.DISARM") finish()
             }
         }
+        disarmReceiver = receiver
         val filter = android.content.IntentFilter("com.zex.tracker.DISARM")
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(disarmReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+            registerReceiver(receiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
         } else {
-            registerReceiver(disarmReceiver, filter)
+            registerReceiver(receiver, filter)
         }
         
         // Ensure it acts as a system overlay lock screen
@@ -51,6 +62,7 @@ class LockActivity : ComponentActivity() {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
         }
+        @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = (
             android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
             or android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
@@ -59,6 +71,7 @@ class LockActivity : ComponentActivity() {
             or android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
             or android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
         )
+        @Suppress("DEPRECATION")
         window.addFlags(
             android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
             android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
@@ -89,17 +102,17 @@ class LockActivity : ComponentActivity() {
             val crimsonBg = Color(0xFFFEF2F2)
             val emerald = Color(0xFF10B981)
 
-            val infiniteTransition = rememberInfiniteTransition()
+            val infiniteTransition = rememberInfiniteTransition(label = "pulse")
             val alpha by infiniteTransition.animateFloat(
                 initialValue = 0.5f,
                 targetValue = 1f,
                 animationSpec = infiniteRepeatable(
                     animation = tween(800, easing = LinearEasing),
                     repeatMode = RepeatMode.Reverse
-                )
+                ),
+                label = "alpha"
             )
             
-            // Auto incrementing tick for realism
             var tick by remember { mutableStateOf(0) }
             LaunchedEffect(Unit) {
                 while(true) {
@@ -108,10 +121,18 @@ class LockActivity : ComponentActivity() {
                 }
             }
 
+            val focusRequester = remember { FocusRequester() }
+            LaunchedEffect(Unit) {
+                delay(300)
+                try { focusRequester.requestFocus() } catch (_: Exception) {}
+            }
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color(0xFFF8FAFC))
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -159,7 +180,6 @@ class LockActivity : ComponentActivity() {
                             Surface(shape = RoundedCornerShape(50), color = crimsonLight, modifier = Modifier.size(60.dp)) {
                                 Icon(Icons.Default.Lock, contentDescription = null, tint = Color.White, modifier = Modifier.padding(16.dp))
                             }
-                            // Pulse dot
                             Surface(shape = RoundedCornerShape(50), color = Color(0xFFFBBF24), modifier = Modifier.size(12.dp).align(Alignment.BottomEnd).offset(x = (-10).dp, y = (-10).dp), border = androidx.compose.foundation.BorderStroke(2.dp, slate900)) {}
                         }
                         
@@ -236,14 +256,16 @@ class LockActivity : ComponentActivity() {
                     }
                 }
                 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(24.dp))
                 
-                // Authorization Card
+                // ── Authorization Card ──────────────────────────────────
                 Card(
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { try { focusRequester.requestFocus() } catch (_: Exception) {} }
                 ) {
                     Column(modifier = Modifier.padding(24.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -253,7 +275,7 @@ class LockActivity : ComponentActivity() {
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         
-                        // Fake pin input row
+                        // PIN dot indicators
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -262,12 +284,19 @@ class LockActivity : ComponentActivity() {
                                 val isFilled = index < pinInput.length
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = if (index == pinInput.length) Color(0xFF2563EB).copy(alpha = 0.1f) else Color(0xFFF1F5F9),
-                                    modifier = Modifier.size(42.dp).aspectRatio(1f)
+                                    color = when {
+                                        error -> crimsonBg
+                                        index == pinInput.length -> Color(0xFF2563EB).copy(alpha = 0.1f)
+                                        else -> Color(0xFFF1F5F9)
+                                    },
+                                    border = if (index == pinInput.length && !error)
+                                        androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFF2563EB))
+                                    else null,
+                                    modifier = Modifier.size(42.dp)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         if (isFilled) {
-                                            Box(modifier = Modifier.size(10.dp).background(slate900, RoundedCornerShape(50)))
+                                            Box(modifier = Modifier.size(10.dp).background(if (error) crimson else slate900, RoundedCornerShape(50)))
                                         } else if (index == pinInput.length) {
                                             Box(modifier = Modifier.width(2.dp).height(16.dp).background(Color(0xFF2563EB)))
                                         } else {
@@ -278,20 +307,41 @@ class LockActivity : ComponentActivity() {
                             }
                         }
                         
-                        // Invisible text field to capture input
-                        TextField(
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        // Real visible PIN field with numeric keyboard
+                        OutlinedTextField(
                             value = pinInput,
-                            onValueChange = { 
-                                if (it.length <= 6) {
-                                    pinInput = it.filter { c -> c.isDigit() }
+                            onValueChange = { v ->
+                                if (v.length <= 6) {
+                                    pinInput = v.filter { it.isDigit() }
+                                    error = false
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth().height(1.dp).alpha(0f)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequester),
+                            label = { Text("Enter 6-digit PIN") },
+                            placeholder = { Text("••••••") },
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                            isError = error,
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color(0xFF1E293B),
+                                unfocusedTextColor = Color(0xFF1E293B),
+                                focusedBorderColor = Color(0xFF2563EB),
+                                unfocusedBorderColor = Color(0xFFCBD5E1),
+                                errorBorderColor = crimson,
+                                focusedLabelColor = Color(0xFF2563EB),
+                                unfocusedLabelColor = slate400,
+                                errorLabelColor = crimson
+                            )
                         )
                         
                         if (error) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Invalid Authorization PIN", color = crimson, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text("❌ Invalid Authorization PIN — Try Again", color = crimson, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
                         }
                         
                         Spacer(modifier = Modifier.height(16.dp))
@@ -299,19 +349,22 @@ class LockActivity : ComponentActivity() {
                         Button(
                             onClick = {
                                 val savedPin = prefs.getString(ZexConstants.KEY_PIN_CODE)
-                                val storedPass = prefs.getString(ZexConstants.KEY_OWNER_PASSWORD)
-                                if (pinInput == savedPin) {
+                                if (pinInput.length == 6 && pinInput == savedPin) {
                                     finish()
                                 } else {
                                     error = true
                                     pinInput = ""
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                            shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = crimsonLight)
+                            enabled = pinInput.length == 6,
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = crimsonLight,
+                                disabledContainerColor = Color(0xFFCBD5E1)
+                            )
                         ) {
-                            Icon(Icons.Default.LockOpen, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.LockOpen, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("DISARM & UNLOCK DEVICE", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
@@ -342,7 +395,16 @@ class LockActivity : ComponentActivity() {
                         }
                     }
                 }
+                
+                Spacer(modifier = Modifier.height(24.dp))
             }
+        }
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        disarmReceiver?.let {
+            try { unregisterReceiver(it) } catch (_: Exception) {}
         }
     }
     
@@ -354,6 +416,7 @@ class LockActivity : ComponentActivity() {
         }
     }
     
+    @Suppress("DEPRECATION")
     override fun onBackPressed() {
         // block back
     }
