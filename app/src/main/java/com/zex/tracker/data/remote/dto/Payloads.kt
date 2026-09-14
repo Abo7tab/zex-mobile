@@ -77,3 +77,11 @@ data class RelayTelemetryPayload(
     val longitude: Double,
     val relay_source: String
 )
+
+
+data class ActivityLogPayload(
+    val message: String,
+    val severity: String = "info",
+    val payload: Map<String, String>? = null
+)
+

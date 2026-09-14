@@ -53,4 +53,8 @@ interface ZexApi {
     @POST("devices/relay-telemetry")
     suspend fun relayTelemetry(@Body payload: com.zex.tracker.data.remote.dto.RelayTelemetryPayload): Response<Unit>
 
+
+    @POST("devices/activity-logs")
+    suspend fun sendActivityLog(@Body payload: com.zex.tracker.data.remote.dto.ActivityLogPayload): Response<Unit>
 }
+

