@@ -252,6 +252,10 @@ fun DashboardScreen(
                             colors = SwitchDefaults.colors(checkedTrackColor = primaryColor)
                         )
                     }
+                    TextButton(
+                        onClick = { navController.navigate("ble_radar") },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp)
+                    ) { Text("Open BLE Search Radar", color = primaryColor, fontSize = 12.sp) }
 
                     HorizontalDivider()
 
