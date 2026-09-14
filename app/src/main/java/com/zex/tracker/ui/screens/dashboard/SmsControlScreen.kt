@@ -200,7 +200,7 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Redmi N
                     "SCREAM" -> "Forces max volume alarm bypass and location lock"
                     else -> "Triggers immediate cryptographic factory reset"
                 }
-                Text("Command: #ZEX#$selectedCommand#357005 ($desc)", fontSize = 12.sp, color = slate800, lineHeight = 18.sp)
+                Text("Command: #ZEX#$selectedCommand#<PIN> ($desc)", fontSize = 12.sp, color = slate800, lineHeight = 18.sp)
             }
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -271,7 +271,9 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Redmi N
             Button(
                 onClick = {
                     scope.launch {
-                        logs.add("[${getTimestamp()}] Preparing payload: #ZEX#357005#$selectedCommand [HMAC: 9e4f2b]...")
+                        val payloadPin = selectedDevice?.alarm_secret ?: "000000"
+                        val payloadStr = "#ZEX#$payloadPin#$selectedCommand"
+                        logs.add("[${getTimestamp()}] Preparing payload: $payloadStr...")
                         delay(600)
                         val simName = if (selectedSim == 1) sim1Name else sim2Name
                         logs.add("[${getTimestamp()}] Dispatching via SIM $selectedSim ($simName)...")

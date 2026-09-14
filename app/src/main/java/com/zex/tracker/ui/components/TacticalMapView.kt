@@ -34,6 +34,15 @@ fun TacticalMapView(
     }
 
     var mapView by remember { mutableStateOf<MapView?>(null) }
+
+    DisposableEffect(mapView) {
+        mapView?.onResume()
+        onDispose {
+            mapView?.onPause()
+            mapView?.onDetach()
+        }
+    }
+
     var marker by remember { mutableStateOf<Marker?>(null) }
 
     Box(modifier = modifier) {

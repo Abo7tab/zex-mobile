@@ -351,6 +351,13 @@ class SmsCommandReceiver : BroadcastReceiver() {
                     }
                     "SEARCH_ON" -> searchModeManager.enterSearchMode("sms", 30)
                     "SEARCH_OFF" -> searchModeManager.exitSearchMode("sms")
+                    "DISARM" -> {
+                        com.zex.tracker.service.ServiceController.isStolen = false
+                        prefs.putBoolean("isStolen", false)
+                        screamManager.stopScream()
+                        context.sendBroadcast(android.content.Intent("com.zex.tracker.DISARM"))
+                        sendReplySms(context, sender, "ZEX: Device DISARMED successfully.")
+                    }
                     else -> {
                         try {
                             val type = CommandType.valueOf(cmdStr)

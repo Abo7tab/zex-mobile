@@ -34,6 +34,18 @@ class LockActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        val disarmReceiver = object : android.content.BroadcastReceiver() {
+            override fun receive(context: android.content.Context, intent: android.content.Intent) {
+                if (intent.action == "com.zex.tracker.DISARM") finish()
+            }
+        }
+        val filter = android.content.IntentFilter("com.zex.tracker.DISARM")
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(disarmReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(disarmReceiver, filter)
+        }
+        
         // Ensure it acts as a system overlay lock screen
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)

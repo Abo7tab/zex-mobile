@@ -50,7 +50,7 @@ fun BleRadarScreen(navController: NavController, deviceName: String = "RMX2020",
     val slate400 = Color(0xFF94A3B8)
     val slate200 = Color(0xFFE2E8F0)
     
-    LaunchedEffect(Unit) {
+    LaunchedEffect(selectedDevice?.device_uid) {
         viewModel.startBleScan()
         viewModel.bleFoundDevices.collect { pair ->
             val hash = pair.first
