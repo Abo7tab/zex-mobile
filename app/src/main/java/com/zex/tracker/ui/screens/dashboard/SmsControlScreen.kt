@@ -281,18 +281,14 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Redmi N
                         logs.add("[${getTimestamp()}] Dispatching via SIM $selectedSim ($simName)...")
                         delay(1200)
                         
-                        // Fake a carrier reject if SIM 1, just for the visual effect requested, or just deliver
-                        if (selectedSim == 1) {
-                            logs.add("[${getTimestamp()}] ⚠️ ERROR: SIM 1 Carrier rejected (Out of Credit / Insufficient Balance).")
-                            delay(500)
-                            logs.add("[${getTimestamp()}] 💡 Auto-Recovery Suggestion: Switch route to SIM 2 ($sim2Name).")
-                            selectedSim = 2
-                            delay(1000)
-                            logs.add("[${getTimestamp()}] Retrying dispatch via SIM 2 ($sim2Name) [SubId: 2]...")
-                            delay(1200)
+                        try {
+                            val smsManager = android.telephony.SmsManager.getDefault()
+                            smsManager.sendTextMessage(currentPhone, null, payloadStr, null, null)
+                            logs.add("[\${getTimestamp()}] ⚡ SMS DELIVERED to \$currentPhone via Default SIM.")
+                        } catch (e: Exception) {
+                            logs.add("[\${getTimestamp()}] ❌ ERROR: Failed to send SMS. Check permissions or SIM credit.")
+                            logs.add("[\${getTimestamp()}] Details: \${e.message}")
                         }
-                        
-                        logs.add("[${getTimestamp()}] ✅ SMS DELIVERED. Waiting for target telemetry response burst.")
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
