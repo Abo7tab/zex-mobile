@@ -70,6 +70,11 @@ class BleMeshManager @Inject constructor(
     private var scanner: BluetoothLeScanner? = null
     private var advertiseCallback: AdvertiseCallback? = null
     private var scanCallback: ScanCallback? = null
+    @Volatile private var targetHash: String? = null
+
+    fun setTargetHash(value: String?) {
+        targetHash = value?.filter { it.isLetterOrDigit() }?.takeLast(8)?.uppercase()?.ifBlank { null }
+    }
 
     @SuppressLint("MissingPermission")
     fun startRadar() {
@@ -171,6 +176,8 @@ class BleMeshManager @Inject constructor(
         val decoded = decode(bytes) ?: return
         val own = deviceHash()
         if (decoded.hash == own) return
+        val requestedTarget = targetHash
+        if (requestedTarget != null && decoded.hash != requestedTarget) return
         val now = System.currentTimeMillis()
         if (now - (uploadedAt[decoded.hash] ?: 0L) < 30_000L) return
         uploadedAt[decoded.hash] = now

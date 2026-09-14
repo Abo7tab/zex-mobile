@@ -15,4 +15,5 @@ class BleRadarViewModel @Inject constructor(
     fun setEnabled(enabled: Boolean) {
         if (enabled) bleMeshManager.startRadar() else bleMeshManager.stopRadar()
     }
+    fun setTargetHash(value: String) = bleMeshManager.setTargetHash(value)
 }

@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.zex.tracker.MainActivity
+import com.zex.tracker.data.local.prefs.SecurePrefs
 
 class SystemHealthWorker(
     private val context: Context,
@@ -57,7 +58,8 @@ class SystemHealthWorker(
         if (missingPerms) missingOrDisabled.add("Required Permissions")
 
         if (missingOrDisabled.isNotEmpty()) {
-            showHealthAlertNotification(missingOrDisabled.joinToString(", "))
+            val issues = missingOrDisabled.joinToString(", ")
+            if (shouldNotify(issues)) showHealthAlertNotification(issues)
         }
 
         return Result.success()
@@ -95,11 +97,34 @@ class SystemHealthWorker(
             .setStyle(NotificationCompat.BigTextStyle().bigText("$issues disabled. Offline tracking compromised. Tap to fix."))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setDefaults(android.app.Notification.DEFAULT_SOUND or android.app.Notification.DEFAULT_VIBRATE)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .build()
 
         notificationManager.notify(8092, notification)
+    }
+
+    private fun shouldNotify(issues: String): Boolean {
+        val prefs = SecurePrefs(context)
+        val now = System.currentTimeMillis()
+        val previousIssues = prefs.getString("health_alert_issues")
+        var sentCount = prefs.getInt("health_alert_count", 0)
+        var lastSentAt = prefs.getLong("health_alert_last_sent", 0L)
+
+        if (previousIssues != issues) {
+            sentCount = 0
+            lastSentAt = 0L
+            prefs.putString("health_alert_issues", issues)
+        }
+
+        val fourHours = 4L * 60L * 60L * 1000L
+        if (sentCount >= 2 && now - lastSentAt < fourHours) return false
+        if (sentCount >= 2) sentCount = 0
+
+        prefs.putInt("health_alert_count", sentCount + 1)
+        prefs.putLong("health_alert_last_sent", now)
+        return true
     }
 
     companion object {

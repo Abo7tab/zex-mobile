@@ -1,5 +1,8 @@
 package com.zex.tracker.ui.screens.dashboard
 
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
+import android.content.Intent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +28,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -50,6 +55,12 @@ fun BleRadarScreen(
 ) {
     val peer by viewModel.lastPeer.collectAsState()
     var enabled by remember { mutableStateOf(true) }
+    var targetHash by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val bluetoothLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) { if (enabled) viewModel.setEnabled(true) }
+    val bluetoothEnabled = context.getSystemService(BluetoothManager::class.java)?.adapter?.isEnabled == true
 
     LaunchedEffect(Unit) { viewModel.setEnabled(true) }
 
@@ -64,6 +75,21 @@ fun BleRadarScreen(
             Switch(checked = enabled, onCheckedChange = { enabled = it; viewModel.setEnabled(it) })
         }
         Text("Offline peer discovery and approximate range", color = Color(0xFF94A3B8), fontSize = 12.sp)
+        if (!bluetoothEnabled) {
+            Button(onClick = { bluetoothLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)) }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))) {
+                Icon(Icons.Default.BluetoothSearching, null)
+                Spacer(Modifier.size(6.dp))
+                Text("Enable Bluetooth")
+            }
+        }
+        OutlinedTextField(
+            value = targetHash,
+            onValueChange = { targetHash = it; viewModel.setTargetHash(it) },
+            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+            singleLine = true,
+            label = { Text("Target phone code (last 8 UID characters)") },
+            placeholder = { Text("Leave empty to discover any ZEX phone") }
+        )
         Spacer(Modifier.height(18.dp))
 
         Box(contentAlignment = Alignment.Center, modifier = Modifier.size(300.dp)) {
