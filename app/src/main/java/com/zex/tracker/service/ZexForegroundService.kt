@@ -16,6 +16,7 @@ import com.zex.tracker.security.location.LocationTracker
 import com.zex.tracker.security.Scheduler
 import com.zex.tracker.security.SearchModeManager
 import com.zex.tracker.security.BleMeshManager
+import com.zex.tracker.data.local.prefs.SecurePrefs
 import com.zex.tracker.data.repository.DeviceRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
@@ -45,6 +46,7 @@ class ZexForegroundService : Service() {
     @Inject lateinit var scheduler: Scheduler
     @Inject lateinit var searchModeManager: SearchModeManager
     @Inject lateinit var bleMeshManager: BleMeshManager
+    @Inject lateinit var securePrefs: SecurePrefs
 
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.IO + job)
@@ -56,6 +58,7 @@ class ZexForegroundService : Service() {
         
         
         isRunning = true
+        ServiceController.isPowerSaver = securePrefs.getBoolean("isPowerSaver")
         ZexLogger.i("ZexForegroundService", "Service Created")
         
         val powerManager = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager

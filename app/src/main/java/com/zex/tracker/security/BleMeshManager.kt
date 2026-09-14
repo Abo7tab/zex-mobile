@@ -96,7 +96,9 @@ class BleMeshManager @Inject constructor(
         advertisingJob = scope.launch {
             while (true) {
                 updateAdvertisement()
-                delay(30_000L)
+                // Keep the beacon discoverable in power-saver mode, but refresh its
+                // location less often to reduce GPS, radio, and network wakeups.
+                delay(if (prefs.getBoolean("isPowerSaver")) 180_000L else 30_000L)
             }
         }
         ZexLogger.i("BleMeshManager", "BLE radar started")
