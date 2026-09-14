@@ -40,6 +40,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.pow
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -58,7 +59,7 @@ class BleMeshManager @Inject constructor(
         private const val SCALE = 100_000.0
     }
 
-    data class Peer(val hash: String, val latitude: Double, val longitude: Double, val battery: Int, val uploaded: Boolean)
+    data class Peer(val hash: String, val latitude: Double, val longitude: Double, val battery: Int, val distanceMeters: Double?, val uploaded: Boolean)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _state = MutableStateFlow<Peer?>(null)
@@ -159,14 +160,14 @@ class BleMeshManager @Inject constructor(
         val settings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()
         scanCallback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
-                result.scanRecord?.getServiceData(SERVICE_PARCEL_UUID)?.let { processPeer(it) }
+                result.scanRecord?.getServiceData(SERVICE_PARCEL_UUID)?.let { processPeer(it, result.rssi) }
             }
             override fun onScanFailed(errorCode: Int) { ZexLogger.w("BleMeshManager", "BLE scan failed: $errorCode") }
         }
         try { scanner?.startScan(filters, settings, scanCallback) } catch (e: SecurityException) { ZexLogger.e("BleMeshManager", "BLE scan permission failure", e) }
     }
 
-    private fun processPeer(bytes: ByteArray) {
+    private fun processPeer(bytes: ByteArray, rssi: Int) {
         val decoded = decode(bytes) ?: return
         val own = deviceHash()
         if (decoded.hash == own) return
@@ -196,8 +197,14 @@ class BleMeshManager @Inject constructor(
                     ZexLogger.w("BleMeshManager", "BLE activity log failed", e)
                 }
             }
-            _state.value = Peer(decoded.hash, decoded.latitude, decoded.longitude, decoded.battery, uploaded)
+            _state.value = Peer(decoded.hash, decoded.latitude, decoded.longitude, decoded.battery, estimateDistance(rssi), uploaded)
         }
+    }
+
+    private fun estimateDistance(rssi: Int): Double? {
+        if (rssi >= 0) return null
+        // BLE RSSI gives an approximate range only; walls and phone orientation affect it.
+        return 10.0.pow((-59 - rssi) / 20.0).coerceIn(0.5, 150.0)
     }
 
     private data class Decoded(val hash: String, val latitude: Double, val longitude: Double, val battery: Int, val accuracy: Float)

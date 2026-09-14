@@ -239,7 +239,9 @@ fun DashboardScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text("BLE SEARCH RADAR", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF0F172A))
                             Text(
-                                lastBlePeer?.let { "Peer ${it.hash} • ${"%.5f".format(it.latitude)}, ${"%.5f".format(it.longitude)} • ${if (it.uploaded) "uploaded" else "upload failed"}" }
+                                lastBlePeer?.let { peer ->
+                                    "Peer ${peer.hash} • ${peer.distanceMeters?.let { if (it >= 100.0) ">100m" else "%.1fm".format(it) } ?: "range n/a"} • ${if (peer.uploaded) "uploaded" else "upload failed"}"
+                                }
                                     ?: "Advertises this phone and uploads discovered peers to Dashboard",
                                 fontSize = 11.sp, color = Color(0xFF64748B), fontFamily = FontFamily.Monospace
                             )
