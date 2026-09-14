@@ -49,4 +49,8 @@ interface ZexApi {
 
     @GET("devices/{device}/status")
     suspend fun getDeviceStatus(@Path("device") deviceId: Long): Response<DeviceStatusPayload>
+
+    @POST("devices/relay-telemetry")
+    suspend fun relayTelemetry(@Body payload: com.zex.tracker.data.remote.dto.RelayTelemetryPayload): Response<Unit>
+
 }

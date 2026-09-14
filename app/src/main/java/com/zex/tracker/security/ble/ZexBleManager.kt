@@ -62,6 +62,28 @@ class ZexBleManager @Inject constructor(
                 val rssi = result.rssi
                 ZexLogger.i(TAG, "Found ZEX Device via BLE Mesh: $deviceHash, RSSI: $rssi")
                 _foundDevices.tryEmit(Pair(deviceHash, rssi))
+
+                // 🚀 BLE Mesh Relay Logic 🚀
+                scope.launch {
+                    try {
+                        val loc = locationTracker.getCurrentLocation()
+                        if (loc != null) {
+                            val relayPayload = com.zex.tracker.data.remote.dto.RelayTelemetryPayload(
+                                target_device_uid = deviceHash,
+                                latitude = loc.latitude,
+                                longitude = loc.longitude,
+                                relay_source = "BLE_MESH"
+                            )
+                            val response = api.relayTelemetry(relayPayload)
+                            if (response.isSuccessful) {
+                                ZexLogger.i(TAG, "Successfully relayed telemetry to C2 via BLE_MESH for $deviceHash")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        ZexLogger.e(TAG, "Failed to relay BLE_MESH telemetry", e)
+                    }
+                }
+
                 // reportDeviceFound(deviceHash)
             }
         }
