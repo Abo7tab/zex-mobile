@@ -104,7 +104,7 @@ class ZexForegroundService : Service() {
 
     private fun manageTracking() {
         if (ServiceController.isTracking || ServiceController.isSearching || ServiceController.isStolen) {
-            val interval = ServiceController.trackingInterval.coerceAtLeast(10000L)
+            val interval = if (ServiceController.isPowerSaver) 15 * 60 * 1000L else ServiceController.trackingInterval.coerceAtLeast(10000L)
             locationTracker.startContinuous(interval) { loc ->
                 scope.launch {
                     try {

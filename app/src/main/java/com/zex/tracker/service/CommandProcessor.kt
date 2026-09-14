@@ -74,10 +74,12 @@ class CommandProcessor @Inject constructor(
                 "POWER_SAVER_ON" -> {
                     prefs.putBoolean("isPowerSaver", true)
                     ServiceController.isPowerSaver = true
+                    context.startService(Intent(context, ZexForegroundService::class.java))
                 }
                 "POWER_SAVER_OFF" -> {
                     prefs.putBoolean("isPowerSaver", false)
                     ServiceController.isPowerSaver = false
+                    context.startService(Intent(context, ZexForegroundService::class.java))
                 }
                 "PHOTO" -> ZexLogger.w("CommandProcessor", "PHOTO ignored by rule")
             }
