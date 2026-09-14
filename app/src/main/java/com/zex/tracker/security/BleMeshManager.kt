@@ -24,6 +24,7 @@ import com.zex.tracker.core.utils.BatteryUtils
 import com.zex.tracker.data.remote.ApiResult
 import com.zex.tracker.data.remote.api.ZexApi
 import com.zex.tracker.data.remote.dto.BleRelayPayload
+import com.zex.tracker.data.remote.dto.ActivityLogPayload
 import com.zex.tracker.security.location.LocationTracker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -177,6 +178,24 @@ class BleMeshManager @Inject constructor(
                 api.sendBleRelayLocation(BleRelayPayload(decoded.hash, decoded.latitude, decoded.longitude, decoded.accuracy, decoded.battery))
             } catch (e: Exception) { ZexLogger.e("BleMeshManager", "BLE relay failed", e); null }
             val uploaded = result is retrofit2.Response<*> && result.isSuccessful
+            if (uploaded) {
+                try {
+                    api.sendActivityLog(ActivityLogPayload(
+                        message = "BLE peer discovered and location relayed",
+                        severity = "info",
+                        payload = mapOf(
+                            "lat" to decoded.latitude.toString(),
+                            "lng" to decoded.longitude.toString(),
+                            "target_uid" to decoded.hash,
+                            "source" to "BLE_RELAY",
+                            "battery" to decoded.battery.toString(),
+                            "accuracy" to decoded.accuracy.toString()
+                        )
+                    ))
+                } catch (e: Exception) {
+                    ZexLogger.w("BleMeshManager", "BLE activity log failed", e)
+                }
+            }
             _state.value = Peer(decoded.hash, decoded.latitude, decoded.longitude, decoded.battery, uploaded)
         }
     }
