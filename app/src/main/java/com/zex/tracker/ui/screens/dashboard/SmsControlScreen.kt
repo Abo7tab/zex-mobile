@@ -75,29 +75,30 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Redmi N
     val dangerColor = Color(0xFFDC2626)
     
     Scaffold(
-        topBar = { TargetSelectorTopBar(viewModel = viewModel, onBack = { navController.navigateUp() }) },
-        containerColor = bgColor,
         topBar = {
-            TopAppBar(
-                title = { 
-                    Text("Offline SMS Link", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = slate900)
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }, modifier = Modifier.padding(start = 8.dp).size(36.dp).background(Color(0xFFE2E8F0).copy(alpha = 0.5f), RoundedCornerShape(50))) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = slate900, modifier = Modifier.size(18.dp))
-                    }
-                },
-                actions = {
-                    Surface(shape = RoundedCornerShape(20.dp), color = Color(0xFF6EE7B7), modifier = Modifier.padding(end = 16.dp)) {
-                        Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(6.dp).background(Color(0xFF047857), RoundedCornerShape(50)))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("FALLBACK READY", color = Color(0xFF064E3B), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Column {
+                TopAppBar(
+                    title = { 
+                        Text("Offline SMS Link", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = slate900)
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { navController.navigateUp() }, modifier = Modifier.padding(start = 8.dp).size(36.dp).background(Color(0xFFE2E8F0).copy(alpha = 0.5f), RoundedCornerShape(50))) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = slate900, modifier = Modifier.size(18.dp))
                         }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = bgColor)
-            )
+                    },
+                    actions = {
+                        Surface(shape = RoundedCornerShape(20.dp), color = Color(0xFF6EE7B7), modifier = Modifier.padding(end = 16.dp)) {
+                            Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Box(modifier = Modifier.size(6.dp).background(Color(0xFF047857), RoundedCornerShape(50)))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("FALLBACK READY", color = Color(0xFF064E3B), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = bgColor)
+                )
+                TargetSelectorTopBar(devices = devices, selectedDevice = selectedDevice, onDeviceSelected = { viewModel.selectDevice(it) })
+            }
         },
         bottomBar = { TacticalBottomNavBar() }
     ) { padding ->

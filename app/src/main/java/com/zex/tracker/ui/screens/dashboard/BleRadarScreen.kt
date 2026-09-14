@@ -84,7 +84,7 @@ fun BleRadarScreen(navController: NavController, deviceName: String = "RMX2020",
     ) else blips.toList()
 
     Scaffold(
-        topBar = { TargetSelectorTopBar(viewModel = viewModel, onBack = { navController.navigateUp() }) },
+        topBar = { TargetSelectorTopBar(devices = devices, selectedDevice = selectedDevice, onDeviceSelected = { viewModel.selectDevice(it) }) },
         containerColor = bgColor,
         bottomBar = { TacticalBottomNavBar() }
     ) { paddingValues ->
