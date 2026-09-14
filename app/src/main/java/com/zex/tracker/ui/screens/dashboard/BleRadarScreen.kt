@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothManager
 import android.content.Intent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -25,6 +27,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -54,15 +58,17 @@ fun BleRadarScreen(
     viewModel: BleRadarViewModel = hiltViewModel()
 ) {
     val peer by viewModel.lastPeer.collectAsState()
+    val devices by viewModel.devices.collectAsState()
     var enabled by remember { mutableStateOf(true) }
-    var targetHash by remember { mutableStateOf("") }
+    var selectedDevice by remember { mutableStateOf<com.zex.tracker.data.remote.dto.DeviceDto?>(null) }
+    var deviceMenuExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val bluetoothLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
     ) { if (enabled) viewModel.setEnabled(true) }
     val bluetoothEnabled = context.getSystemService(BluetoothManager::class.java)?.adapter?.isEnabled == true
 
-    LaunchedEffect(Unit) { viewModel.setEnabled(true) }
+    LaunchedEffect(Unit) { viewModel.fetchDevices(); viewModel.setEnabled(true) }
 
     Column(
         modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A)).padding(16.dp),
@@ -82,14 +88,24 @@ fun BleRadarScreen(
                 Text("Enable Bluetooth")
             }
         }
-        OutlinedTextField(
-            value = targetHash,
-            onValueChange = { targetHash = it; viewModel.setTargetHash(it) },
-            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-            singleLine = true,
-            label = { Text("Target phone code (last 8 UID characters)") },
-            placeholder = { Text("Leave empty to discover any ZEX phone") }
-        )
+        Box(modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
+            OutlinedTextField(
+                value = selectedDevice?.device_name ?: "Any nearby ZEX phone",
+                onValueChange = {},
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                readOnly = true,
+                label = { Text("Target phone") },
+                placeholder = { Text("Choose a registered phone") }
+            )
+            Box(modifier = Modifier.matchParentSize().clickable { deviceMenuExpanded = true })
+            DropdownMenu(expanded = deviceMenuExpanded, onDismissRequest = { deviceMenuExpanded = false }, modifier = Modifier.heightIn(max = 280.dp)) {
+                DropdownMenuItem(text = { Text("Any nearby ZEX phone") }, onClick = { selectedDevice = null; viewModel.selectDevice(null); deviceMenuExpanded = false })
+                devices.forEach { item ->
+                    DropdownMenuItem(text = { Text("${item.device_name} • ${item.device_model}") }, onClick = { selectedDevice = item; viewModel.selectDevice(item); deviceMenuExpanded = false })
+                }
+            }
+        }
         Spacer(Modifier.height(18.dp))
 
         Box(contentAlignment = Alignment.Center, modifier = Modifier.size(300.dp)) {
@@ -125,5 +141,9 @@ fun BleRadarScreen(
         }
         Spacer(Modifier.height(14.dp))
         Text("Distance is an approximate BLE RSSI estimate. BLE alone cannot provide a reliable left/right direction.", color = Color(0xFF94A3B8), fontSize = 11.sp)
+        Spacer(Modifier.height(12.dp))
+        Button(onClick = { viewModel.setEnabled(false); enabled = false; navController.navigate("sms_control") }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF334155)), modifier = Modifier.fillMaxWidth()) {
+            Text("Stop Radar and Open Offline SMS Dispatch")
+        }
     }
 }
