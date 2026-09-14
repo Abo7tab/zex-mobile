@@ -30,6 +30,7 @@ import android.telephony.SubscriptionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.security.MessageDigest
 
 @AndroidEntryPoint
 class SmsCommandReceiver : BroadcastReceiver() {
@@ -84,7 +85,10 @@ class SmsCommandReceiver : BroadcastReceiver() {
                 try {
                     smsManager.sendTextMessage(to, null, message, sentPI, deliveredPI)
                     ZexLogger.i("SmsCommandReceiver", "Dispatched SMS to $to. Awaiting carrier confirmation.")
-                    android.widget.Toast.makeText(context, "SMS Dispatched to $to", android.widget.Toast.LENGTH_SHORT).show()
+                    prefs.appendLine(
+                        ZexConstants.KEY_SMS_DISPATCH_LOG,
+                        "[${System.currentTimeMillis()}] SMS REPLY SUBMITTED to $to"
+                    )
                 } catch(e: Exception) {
                     ZexLogger.e("SmsCommandReceiver", "FATAL SMS DISPATCH ERROR", e)
                 }
@@ -130,61 +134,13 @@ class SmsCommandReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
             val msgs = Telephony.Sms.Intents.getMessagesFromIntent(intent)
-            val storedOwnerPhone = prefs.getString(ZexConstants.KEY_OWNER_PHONE) ?: ""
-            val alarmSecret = prefs.getString("alarm_secret")
-
             for (msg in msgs) {
                 val sender = msg.originatingAddress ?: continue
                 val rawBody = msg.messageBody?.trim() ?: continue
                 
                 
-                // 🚀 SMS Relay Gateway Logic 🚀
-                if (rawBody.startsWith("#ZEX#LOC#")) {
-                    ZexLogger.i("SmsCommandReceiver", "Received SMS Relay Payload: $rawBody")
-                    try { abortBroadcast() } catch (e: Exception) { }
-                    
-                    val pendingResult = goAsync()
-                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-                        try {
-                            val parts = rawBody.split("#").filter { it.isNotEmpty() }
-                            if (parts.size >= 5 && parts[1] == "LOC") {
-                                val lat = parts[2].toDoubleOrNull()
-                                val lng = parts[3].toDoubleOrNull()
-                                val targetUid = parts[4]
-                                
-                                if (lat != null && lng != null) {
-                                    val relayPayload = com.zex.tracker.data.remote.dto.RelayTelemetryPayload(
-                                        target_device_uid = targetUid,
-                                        latitude = lat,
-                                        longitude = lng,
-                                        relay_source = "SMS_RELAY"
-                                    )
-                                    val response = zexApi.relayTelemetry(relayPayload)
-                                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { try { try {
-                                        zexApi.sendActivityLog(com.zex.tracker.data.remote.dto.ActivityLogPayload(
-                                            message = "Intercepted SMS location from Target $targetUid",
-                                            severity = "info",
-                                            payload = mapOf("target_uid" to targetUid, "lat" to lat.toString(), "lng" to lng.toString())
-                                        ))
-                                    } catch(e: Exception) {} } catch(e: Exception) {} }
-                                    if (response.isSuccessful) {
-                                        ZexLogger.i("SmsCommandReceiver", "Successfully relayed telemetry to C2 via SMS_RELAY")
-                                    } else {
-                                        ZexLogger.e("SmsCommandReceiver", "Failed to relay telemetry: ${response.code()}")
-                                    }
-                                }
-                            }
-                        } catch (e: Exception) {
-                            ZexLogger.e("SmsCommandReceiver", "Error processing SMS Relay", e)
-                        } finally {
-                            pendingResult.finish()
-                        }
-                    }
-                    continue
-                }
-
                 if (rawBody.contains("ZEX Alert")) {
-                    val regex = Regex("GPS:\\s*([\\\\-0-9.]+),\\s*([\\\\-0-9.]+)")
+                    val regex = Regex("GPS:\\s*([-+0-9.]+),\\s*([-+0-9.]+)")
                     val match = regex.find(rawBody)
                     val nameRegex = Regex("\\[(.*?)\\]")
                     val nameMatch = nameRegex.find(rawBody)
@@ -193,44 +149,30 @@ class SmsCommandReceiver : BroadcastReceiver() {
                     if (match != null) {
                         val lat = match.groupValues[1].toDoubleOrNull() ?: continue
                         val lng = match.groupValues[2].toDoubleOrNull() ?: continue
+                        prefs.appendLine(
+                            ZexConstants.KEY_SMS_DISPATCH_LOG,
+                            "[${System.currentTimeMillis()}] SMS LOCATION RECEIVED: $lat,$lng"
+                        )
                         showMapNotification(context, lat.toString(), lng.toString(), deviceName)
                         
-                        // Push to backend via sms_relay
+                        // A human-readable reply also carries the target UID, allowing the
+                        // owner's signed-in controller to update the correct dashboard target.
                         val pendingResult = goAsync()
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
-                                val api = com.zex.tracker.di.NetworkModule.provideZexApi(
-                                    com.zex.tracker.di.NetworkModule.provideRetrofit(
-                                        com.zex.tracker.di.NetworkModule.provideOkHttpClient(com.zex.tracker.di.NetworkModule.provideAuthInterceptor(prefs), com.zex.tracker.di.ZexAuditInterceptor(com.zex.tracker.core.logging.LiveTerminalLogger()))
-                                    )
-                                )
-                                val devicesRes = api.getOwnerDevices()
-                                if (devicesRes.isSuccessful) {
-                                    val senderSanitized = sender.replace(Regex("\\D"), "")
-                                    val senderLast8 = if (senderSanitized.length >= 8) senderSanitized.takeLast(8) else senderSanitized
-                                    val targetDev = devicesRes.body()?.data?.find {
-                                        val p = it.phone_number?.replace(Regex("\\D"), "") ?: ""
-                                        p.endsWith(senderLast8)
-                                    }
-                                    if (targetDev != null) {
-                                        val payload = com.zex.tracker.data.remote.dto.LocationPayload(
-                                            device_uid = targetDev.device_uid,
+                                val targetUid = Regex("UID:\\s*([A-Za-z0-9-]+)").find(rawBody)?.groupValues?.getOrNull(1)
+                                if (targetUid.isNullOrBlank()) {
+                                    ZexLogger.w("SmsCommandReceiver", "Ignoring SMS location without a target UID")
+                                } else {
+                                    val response = zexApi.relayTelemetry(
+                                        com.zex.tracker.data.remote.dto.RelayTelemetryPayload(
+                                            target_device_uid = targetUid,
                                             latitude = lat,
                                             longitude = lng,
-                                            accuracy = 10f,
-                                            altitude = 0.0,
-                                            speed = 0f,
-                                            bearing = 0f,
-                                            provider = "sms_relay",
-                                            battery_level = 0,
-                                            fcm_token = null,
-                                            network_type = "SMS",
-                                            address = null,
-                                            recorded_at = java.time.Instant.now().toString()
+                                            relay_source = "SMS_RELAY"
                                         )
-                                        api.sendLocation(payload)
-                                        ZexLogger.i("SmsCommandReceiver", "Relayed SMS location to backend for ${targetDev.device_name}")
-                                    }
+                                    )
+                                    if (!response.isSuccessful) ZexLogger.e("SmsCommandReceiver", "SMS relay rejected: ${response.code()}")
                                 }
                             } catch (e: Exception) {
                                 ZexLogger.e("SmsCommandReceiver", "Failed to relay SMS location", e)
@@ -248,28 +190,43 @@ class SmsCommandReceiver : BroadcastReceiver() {
                 
                 if (!upper.startsWith("#ZEX#") && !upper.startsWith("ZEX#")) continue
 
+                val commandFingerprint = MessageDigest.getInstance("SHA-256")
+                    .digest("$sender|$upper".toByteArray())
+                    .joinToString("") { "%02x".format(it) }
+                val nowSeconds = System.currentTimeMillis() / 1000L
+                val lastCommand = prefs.getString(ZexConstants.KEY_LAST_SMS_COMMAND).orEmpty().split("|")
+                if (lastCommand.size == 2 && lastCommand[0] == commandFingerprint && nowSeconds - (lastCommand[1].toLongOrNull() ?: 0L) < 120L) {
+                    ZexLogger.w("SmsCommandReceiver", "Duplicate SMS command ignored")
+                    prefs.appendLine(ZexConstants.KEY_SMS_DISPATCH_LOG, "[$nowSeconds] DUPLICATE SMS IGNORED")
+                    continue
+                }
+                prefs.putString(ZexConstants.KEY_LAST_SMS_COMMAND, "$commandFingerprint|$nowSeconds")
+
                 // Cleanly strip prefix whether it starts with # or not
                 val cleanBody = upper.removePrefix("#ZEX#").removePrefix("ZEX#").trim().removeSuffix("#")
                 val parts = cleanBody.split("#").map { it.trim() }
                 var isAuthorized = false
                 var cmdStr = ""
 
-                val ownerPin = prefs.getString(ZexConstants.KEY_PIN_CODE)
-                val cleanIncomingPin = parts[0].replace(Regex("[^A-Za-z0-9]"), "")
-                val cleanOwnerPin = ownerPin?.replace(Regex("[^A-Za-z0-9]"), "")
-                val cleanAlarmSecret = alarmSecret?.replace(Regex("[^A-Za-z0-9]"), "")
+                val pinProvisioned = prefs.getBoolean(ZexConstants.KEY_PIN_PROVISIONED)
+                if (!pinProvisioned) {
+                    // Migrate installations that carried the former implicit/default PIN.
+                    prefs.remove(ZexConstants.KEY_PIN_CODE)
+                }
+                val ownerPin = if (pinProvisioned) prefs.getString(ZexConstants.KEY_PIN_CODE) else null
+                val cleanIncomingPin = parts.firstOrNull()?.replace(Regex("[^0-9]"), "")
+                val cleanOwnerPin = ownerPin?.replace(Regex("[^0-9]"), "")
                 
                 val isValidPin = parts.isNotEmpty() && (
-                    (!cleanAlarmSecret.isNullOrEmpty() && cleanIncomingPin == cleanAlarmSecret) ||
                     (!cleanOwnerPin.isNullOrEmpty() && cleanIncomingPin == cleanOwnerPin)
                 )
 
                 if (isValidPin) {
-                    if (parts.size >= 3) {
-                        val timestamp = parts[2].toLongOrNull()
+                    if (parts.size >= 4) {
+                        val timestamp = parts[3].toLongOrNull()
                         if (timestamp != null) {
-                            val now = System.currentTimeMillis() / 1000
-                            if (now - timestamp > 300) {
+                            val now = System.currentTimeMillis() / 1000L
+                            if (kotlin.math.abs(now - timestamp) > 300L) {
                                 ZexLogger.w("SmsCommandReceiver", "SMS Replay Attack blocked. Timestamp too old.")
                                 sendReplySms(context, sender, "ZEX Error: Command expired (replay protection).")
                                 continue
@@ -286,17 +243,6 @@ class SmsCommandReceiver : BroadcastReceiver() {
                     }
                 }
                 
-                if (!isAuthorized && storedOwnerPhone.isNotEmpty()) {
-                    val sanitizedSender = sender.replace(Regex("\\D"), "")
-                    val sanitizedOwner = storedOwnerPhone.replace(Regex("\\D"), "")
-                    val ownerLast8 = if (sanitizedOwner.length >= 8) sanitizedOwner.takeLast(8) else sanitizedOwner
-                    if (sanitizedSender.endsWith(ownerLast8)) {
-                        isAuthorized = true
-                        cmdStr = parts.joinToString("#")
-                        if (cmdStr.isEmpty()) cmdStr = "SOS"
-                    }
-                }
-
                 if (!isAuthorized) {
                     ZexLogger.w("SmsCommandReceiver", "Unauthorized SMS command from $sender. Rejecting.")
                     sendReplySms(context, sender, "ZEX Error: Invalid PIN or Secret provided.")
@@ -336,20 +282,28 @@ class SmsCommandReceiver : BroadcastReceiver() {
                                     val lat = location.latitude
                                     val lng = location.longitude
                                     val deviceName = prefs.getString("device_name") ?: android.os.Build.MODEL
-                                    val smsBody = "ZEX Alert [$deviceName] GPS: https://maps.google.com/?q=${lat},${lng} (Bat: ${batteryLevel}%)"
+                                    val deviceUid = prefs.getString(ZexConstants.KEY_DEVICE_UID).orEmpty()
+                                    // Plain coordinates are accepted by SMS clients that block
+                                    // web links. The UID lets the controller update this target.
+                                    val smsBody = "ZEX Alert [$deviceName] GPS: $lat,$lng (Bat: ${batteryLevel}%) UID: $deviceUid"
                                     sendReplySms(context, sender, smsBody)
-                                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { try { try {
-                                        zexApi.sendActivityLog(com.zex.tracker.data.remote.dto.ActivityLogPayload(
+                                    try {
+                                        val activityResponse = zexApi.sendActivityLog(com.zex.tracker.data.remote.dto.ActivityLogPayload(
                                             message = "Sent GPS Coordinates to Commander via SMS",
                                             severity = "info",
-                                            payload = mapOf("lat" to lat.toString(), "lng" to lng.toString())
+                                            payload = mapOf(
+                                                "lat" to lat.toString(),
+                                                "lng" to lng.toString(),
+                                                "target_uid" to deviceUid,
+                                                "source" to "SMS"
+                                            )
                                         ))
-                                    } catch(e: Exception) {} } catch(e: Exception) {} }
-                                    val deviceUid = prefs.getString("device_uid") ?: ""
-                                    if (deviceUid.isNotEmpty()) {
-                                        sendReplySms(context, sender, "#ZEX#LOC#$lat#$lng#$deviceUid")
+                                        if (!activityResponse.isSuccessful) {
+                                            ZexLogger.e("SmsCommandReceiver", "Activity log rejected: ${activityResponse.code()}")
+                                        }
+                                    } catch (e: Exception) {
+                                        ZexLogger.e("SmsCommandReceiver", "Failed to send SMS activity log", e)
                                     }
-                                    
                                     try {
                                         deviceRepo.sendLocation(location)
                                     } catch (e: Exception) {

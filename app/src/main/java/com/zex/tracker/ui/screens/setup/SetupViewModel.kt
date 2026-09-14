@@ -39,9 +39,10 @@ class SetupViewModel @Inject constructor(
                     prefs.putString(ZexConstants.KEY_OWNER_TOKEN, res.data.token)
                     prefs.putInt(ZexConstants.KEY_OWNER_ID, res.data.owner.id)
                     prefs.putString(ZexConstants.KEY_OWNER_PHONE, res.data.owner.phone ?: "")
-                    if (prefs.getString(ZexConstants.KEY_PIN_CODE).isNullOrEmpty()) {
-                        prefs.putString(ZexConstants.KEY_PIN_CODE, "000000")
-                    }
+                    // The SMS emergency PIN is only ever the PIN chosen during registration.
+                    // Never synthesize a known default such as 000000.
+                    prefs.putString(ZexConstants.KEY_PIN_CODE, req.pin_code)
+                    prefs.putBoolean(ZexConstants.KEY_PIN_PROVISIONED, true)
                     ZexLogger.i("Setup", "Owner registered successfully")
                     _uiState.value = _uiState.value.copy(isLoading = false)
                     onSuccess()
@@ -53,7 +54,7 @@ class SetupViewModel @Inject constructor(
         }
     }
 
-    fun loginOwner(req: LoginRequest, onSuccess: () -> Unit) {
+    fun loginOwner(req: LoginRequest, emergencyPin: String? = null, onSuccess: () -> Unit) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             when (val res = authRepo.login(req)) {
@@ -61,8 +62,14 @@ class SetupViewModel @Inject constructor(
                     prefs.putString(ZexConstants.KEY_OWNER_TOKEN, res.data.token)
                     prefs.putInt(ZexConstants.KEY_OWNER_ID, res.data.owner.id)
                     prefs.putString(ZexConstants.KEY_OWNER_PHONE, res.data.owner.phone ?: "")
-                    if (prefs.getString(ZexConstants.KEY_PIN_CODE).isNullOrEmpty()) {
-                        prefs.putString(ZexConstants.KEY_PIN_CODE, "000000")
+                    // The API intentionally never returns the PIN hash. The operator
+                    // re-enters the account PIN on this device so offline SMS can use
+                    // the same credential without inventing a default PIN.
+                    prefs.remove(ZexConstants.KEY_PIN_CODE)
+                    prefs.putBoolean(ZexConstants.KEY_PIN_PROVISIONED, false)
+                    if (emergencyPin?.matches(Regex("\\d{6}")) == true) {
+                        prefs.putString(ZexConstants.KEY_PIN_CODE, emergencyPin)
+                        prefs.putBoolean(ZexConstants.KEY_PIN_PROVISIONED, true)
                     }
                     ZexLogger.i("Setup", "Owner logged in successfully")
                     _uiState.value = _uiState.value.copy(isLoading = false)

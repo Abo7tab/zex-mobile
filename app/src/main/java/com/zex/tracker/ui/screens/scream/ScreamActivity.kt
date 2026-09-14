@@ -189,7 +189,7 @@ class ScreamActivity : ComponentActivity() {
                     Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.GraphicEq, contentDescription = null, tint = crimsonDark, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Strobe Siren 2.4kHz • Battery: 82% • Mesh: Active", fontSize = 11.sp, color = slate800, fontWeight = FontWeight.SemiBold)
+                        Text("Strobe Siren 2.4kHz • Battery: -- • Mesh: Active", fontSize = 11.sp, color = slate800, fontWeight = FontWeight.SemiBold)
                     }
                 }
                 
@@ -216,7 +216,7 @@ class ScreamActivity : ComponentActivity() {
                         
                         Spacer(modifier = Modifier.height(20.dp))
                         
-                        // Fake pin input row
+                        // Mock pin input row
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween

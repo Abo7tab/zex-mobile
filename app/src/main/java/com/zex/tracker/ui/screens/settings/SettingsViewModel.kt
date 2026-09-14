@@ -3,6 +3,8 @@
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zex.tracker.data.remote.api.ZexApi
+import com.zex.tracker.data.local.prefs.SecurePrefs
+import com.zex.tracker.core.constants.ZexConstants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,7 +13,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val api: ZexApi
+    private val api: ZexApi,
+    private val prefs: SecurePrefs
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SettingsUiState>(SettingsUiState.Idle)
@@ -48,6 +51,12 @@ class SettingsViewModel @Inject constructor(
                 
                 val response = api.updateSecurity(map)
                 if (response.isSuccessful) {
+                    if (pinCode.length == 6 && pinCode.all(Char::isDigit)) {
+                        // The local target needs the current user-selected PIN for
+                        // emergency SMS authorization; the server still stores only a hash.
+                        prefs.putString(ZexConstants.KEY_PIN_CODE, pinCode)
+                        prefs.putBoolean(ZexConstants.KEY_PIN_PROVISIONED, true)
+                    }
                     _uiState.value = SettingsUiState.Success("تم تحديث الأمان بنجاح")
                 } else {
                     _uiState.value = SettingsUiState.Error("فشل التحديث: الرجاء التأكد من صحة كلمة المرور الحالية")

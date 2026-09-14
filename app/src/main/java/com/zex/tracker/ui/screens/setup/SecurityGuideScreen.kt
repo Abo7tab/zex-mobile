@@ -46,6 +46,7 @@ fun SecurityGuideScreen(navController: NavController, prefs: SecurePrefs) {
     var hasAdmin by remember { mutableStateOf(false) }
     var hasBattery by remember { mutableStateOf(false) }
     var hasOverlay by remember { mutableStateOf(false) }
+    var hasAccessibility by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -74,6 +75,11 @@ fun SecurityGuideScreen(navController: NavController, prefs: SecurePrefs) {
         hasOverlay = Settings.canDrawOverlays(context)
     }
 
+    val accessibilityLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        val enabledServices = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+        hasAccessibility = enabledServices?.split(':')?.any { it.startsWith(context.packageName) } == true
+    }
+
     LaunchedEffect(Unit) {
         val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val adminComponent = ComponentName(context, ZexDeviceAdminReceiver::class.java)
@@ -83,6 +89,8 @@ fun SecurityGuideScreen(navController: NavController, prefs: SecurePrefs) {
         hasBattery = pm.isIgnoringBatteryOptimizations(context.packageName)
         
         hasOverlay = Settings.canDrawOverlays(context)
+        val enabledServices = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+        hasAccessibility = enabledServices?.split(':')?.any { it.startsWith(context.packageName) } == true
         
         hasLocation = context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -105,7 +113,7 @@ fun SecurityGuideScreen(navController: NavController, prefs: SecurePrefs) {
         permissionLauncher.launch(permissionsToRequest.toTypedArray())
     }
 
-    val allDone = hasLocation && hasBackgroundLocation && hasSms && hasAdmin && hasBattery && hasOverlay
+    val allDone = hasLocation && hasBackgroundLocation && hasSms && hasAdmin && hasBattery && hasOverlay && hasAccessibility
 
     Scaffold(containerColor = bgColor) { padding ->
         Column(
@@ -152,6 +160,43 @@ fun SecurityGuideScreen(navController: NavController, prefs: SecurePrefs) {
                         intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
                         intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Required for Remote Wipe and Screen Lock.")
                         adminLauncher.launch(intent)
+                    }
+
+                    CapabilityRow("Accessibility Guard", "Protects lock/scream screens from system-dialog bypass", successColor, hasAccessibility) {
+                        accessibilityLauncher.launch(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                    }
+
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF7ED)),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Text(
+                                "Protect Power-Off",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF9A3412)
+                            )
+                            Text(
+                                "If your device supports it, enable the system option that requires the device password before powering off. Android does not expose a reliable API to verify this setting automatically.",
+                                fontSize = 12.sp,
+                                color = Color(0xFF7C2D12),
+                                modifier = Modifier.padding(top = 4.dp, bottom = 10.dp)
+                            )
+                            OutlinedButton(
+                                onClick = {
+                                    try {
+                                        context.startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS))
+                                    } catch (_: Exception) {
+                                        context.startActivity(Intent(Settings.ACTION_SETTINGS))
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Open Device Security Settings")
+                            }
+                        }
                     }
                     CapabilityRow("Ignore Battery Limits", "Ensures 100% background uptime", successColor, hasBattery, isLast = true) {
                         val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)

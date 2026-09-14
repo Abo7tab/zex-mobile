@@ -8,6 +8,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import com.zex.tracker.core.logging.LiveTerminalLogger
 
@@ -26,6 +27,20 @@ class DashboardViewModel @Inject constructor(
 
     private val _selectedDevice = MutableStateFlow<DeviceDto?>(null)
     val selectedDevice: StateFlow<DeviceDto?> = _selectedDevice
+
+    private val _smsLogs = MutableStateFlow(
+        prefs.getString(ZexConstants.KEY_SMS_DISPATCH_LOG)
+            .orEmpty()
+            .split("\\n")
+            .filter { it.isNotBlank() }
+    )
+    val smsLogs: StateFlow<List<String>> = _smsLogs.asStateFlow()
+
+    fun appendSmsLog(message: String) {
+        val updated = (_smsLogs.value + message).takeLast(100)
+        _smsLogs.value = updated
+        prefs.putString(ZexConstants.KEY_SMS_DISPATCH_LOG, updated.joinToString("\\n"))
+    }
 
     fun selectDevice(device: DeviceDto) {
         _selectedDevice.value = device

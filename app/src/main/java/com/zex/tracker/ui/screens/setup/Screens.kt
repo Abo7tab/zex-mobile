@@ -268,7 +268,8 @@ fun PermissionsScreen(navController: NavController) {
 
     fun updateStatuses() {
         isLocGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        isSmsGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
+        isSmsGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED
         
         isBleGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED &&
@@ -406,8 +407,13 @@ fun PermissionsScreen(navController: NavController) {
             Text("GRANT ALL & INITIALIZE SYSTEM", fontWeight = FontWeight.Bold)
         }
         
-        TextButton(onClick = { navController.navigate("deviceAdmin") }) {
-            Text("PROCEED (DEBUG)", color = Color.Gray)
+        val canProceed = isLocGranted && isSmsGranted && isBleGranted && isOverlayGranted
+        Button(
+            onClick = { navController.navigate("deviceAdmin") },
+            enabled = canProceed,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(if (canProceed) "CONTINUE TO DEVICE PROTECTION" else "GRANT REQUIRED PERMISSIONS TO CONTINUE")
         }
     }
 }

@@ -14,9 +14,12 @@ object ZexConstants {
     const val KEY_OWNER_PHONE = "owner_phone"
     const val KEY_OWNER_PASSWORD = "owner_password"
     const val KEY_PIN_CODE = "pin_code"
+    const val KEY_PIN_PROVISIONED = "pin_provisioned"
     const val KEY_IS_SETUP_COMPLETE = "is_setup_complete"
     const val KEY_LANGUAGE = "language"
     const val KEY_SMS_HANDSHAKE_PASSED = "sms_handshake_passed"
+    const val KEY_SMS_DISPATCH_LOG = "sms_dispatch_log"
+    const val KEY_LAST_SMS_COMMAND = "last_sms_command"
     
     // Actions
     const val ACTION_STOP_SCREAM = "com.zex.tracker.ACTION_STOP_SCREAM_AND_FINISH"

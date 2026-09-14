@@ -15,6 +15,7 @@ import com.zex.tracker.data.remote.firebase.FirebaseCommandListener
 import com.zex.tracker.security.location.LocationTracker
 import com.zex.tracker.security.Scheduler
 import com.zex.tracker.security.SearchModeManager
+import com.zex.tracker.security.BleMeshManager
 import com.zex.tracker.data.repository.DeviceRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
@@ -43,6 +44,7 @@ class ZexForegroundService : Service() {
     @Inject lateinit var firebaseListener: FirebaseCommandListener
     @Inject lateinit var scheduler: Scheduler
     @Inject lateinit var searchModeManager: SearchModeManager
+    @Inject lateinit var bleMeshManager: BleMeshManager
 
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.IO + job)
@@ -64,6 +66,7 @@ class ZexForegroundService : Service() {
         startForeground(1001, createNotification())
         
         firebaseListener.startListening()
+        if (ServiceController.isSearching || ServiceController.isStolen) bleMeshManager.startRadar()
         scheduler.scheduleHourlyChecks()
         
         // Initial boot/start check
@@ -243,6 +246,7 @@ class ZexForegroundService : Service() {
         
         locationTracker.stopContinuous()
         firebaseListener.stopListening()
+        bleMeshManager.stopRadar()
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)

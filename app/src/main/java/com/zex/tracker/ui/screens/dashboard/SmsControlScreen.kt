@@ -38,14 +38,15 @@ import java.util.*
 fun SmsControlScreen(navController: NavController, deviceName: String = "Unknown Device", phone: String = "", viewModel: DashboardViewModel = hiltViewModel()) {
     var selectedCommand by remember { mutableStateOf("LOCATE") }
     var selectedSim by remember { mutableStateOf(1) } // 1 or 2
-    val logs = remember { mutableStateListOf<String>() }
+    val logs by viewModel.smsLogs.collectAsState()
     
     val context = LocalContext.current
     var sim1Name by remember { mutableStateOf("SIM 1") }
     var sim2Name by remember { mutableStateOf("SIM 2") }
     
     LaunchedEffect(Unit) {
-        logs.add("[${getTimestamp()}] Initializing ZEX SMS C2 Engine v2.4...")
+        viewModel.fetchDevices()
+        viewModel.appendSmsLog("[${getTimestamp()}] Initializing ZEX SMS C2 Engine v2.4...")
         
         // Fetch SIM names
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
@@ -69,6 +70,7 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Unknown
     val currentDeviceName = selectedDevice?.device_name ?: selectedDevice?.device_uid ?: deviceName
     val currentPhone = selectedDevice?.phone_number ?: phone
     var manualPhone by remember(currentPhone) { mutableStateOf(currentPhone) }
+    var emergencyPin by remember { mutableStateOf("") }
     val bgColor = Color(0xFFF8FAFC)
     val cardColor = Color(0xFFFFFFFF)
     val primaryColor = Color(0xFF2563EB)
@@ -95,7 +97,7 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Unknown
                             Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Box(modifier = Modifier.size(6.dp).background(Color(0xFF047857), RoundedCornerShape(50)))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("FALLBACK READY", color = Color(0xFF064E3B), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text("RELAY READY", color = Color(0xFF064E3B), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     },
@@ -124,8 +126,10 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Unknown
                     OutlinedTextField(
                         value = manualPhone,
                         onValueChange = { manualPhone = it },
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
+                        label = { Text("Target phone number") },
+                        placeholder = { Text("e.g. +2010...") },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp),
                         colors = OutlinedTextFieldDefaults.colors(focusedTextColor = slate800, unfocusedTextColor = slate800),
                         singleLine = true
                     )
@@ -135,6 +139,19 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Unknown
                 }
             }
             
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = emergencyPin,
+                onValueChange = { emergencyPin = it.filter(Char::isDigit).take(6) },
+                label = { Text("Emergency PIN (required, 6 digits)") },
+                supportingText = { Text("Required for every SMS command. The account password is not accepted here.") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword)
+            )
+
             Spacer(modifier = Modifier.height(16.dp))
             
             Surface(shape = RoundedCornerShape(12.dp), color = bgColor, modifier = Modifier.fillMaxWidth()) {
@@ -212,7 +229,7 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Unknown
                     "SCREAM" -> "Forces max volume alarm bypass and location lock"
                     else -> "Triggers immediate cryptographic factory reset"
                 }
-                Text("Command: #ZEX#$selectedCommand#<PIN> ($desc)", fontSize = 12.sp, color = slate800, lineHeight = 18.sp)
+                Text("Command: #ZEX#<PIN>#$selectedCommand ($desc)", fontSize = 12.sp, color = slate800, lineHeight = 18.sp)
             }
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -271,7 +288,7 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Unknown
                             }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("$sim2Name (Fallback)", fontSize = 11.sp, color = slate800)
+                        Text("$sim2Name (Relay)", fontSize = 11.sp, color = slate800)
                     }
                 }
             }
@@ -283,13 +300,26 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Unknown
             Button(
                 onClick = {
                     scope.launch {
-                        val payloadPin = selectedDevice?.alarm_secret ?: "000000"
-                        val payloadStr = "#ZEX#$payloadPin#$selectedCommand"
-                        val maskedPayloadStr = "#ZEX#******#$selectedCommand"
-                        logs.add("[${getTimestamp()}] Preparing payload: $maskedPayloadStr...")
+                        val normalizedPhone = manualPhone.filter(Char::isDigit)
+                        if (selectedDevice == null) {
+                            viewModel.appendSmsLog("[${getTimestamp()}] ERROR: Select a registered target before dispatching.")
+                            return@launch
+                        }
+                        if (normalizedPhone.length < 8) {
+                            viewModel.appendSmsLog("[${getTimestamp()}] ERROR: Enter the target phone number.")
+                            return@launch
+                        }
+                        if (emergencyPin.length != 6) {
+                            viewModel.appendSmsLog("[${getTimestamp()}] ERROR: Enter the account's 6-digit PIN. A default PIN is never accepted.")
+                            return@launch
+                        }
+                        val commandTimestamp = System.currentTimeMillis() / 1000L
+                        val payloadStr = "#ZEX#$emergencyPin#$selectedCommand#$commandTimestamp"
+                        val maskedPayloadStr = "#ZEX#******#$selectedCommand#$commandTimestamp"
+                        viewModel.appendSmsLog("[${getTimestamp()}] Preparing payload: $maskedPayloadStr...")
                         delay(600)
                         val simName = if (selectedSim == 1) sim1Name else sim2Name
-                        logs.add("[${getTimestamp()}] Dispatching via SIM $selectedSim ($simName)...")
+                        viewModel.appendSmsLog("[${getTimestamp()}] Dispatching via SIM $selectedSim ($simName)...")
                         delay(1200)
                         
                         try {
@@ -307,11 +337,11 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Unknown
                                     }
                                 }
                             }
-                            smsManager.sendTextMessage(manualPhone, null, payloadStr, null, null)
-                            logs.add("[\${getTimestamp()}] ⚡ SMS SUBMITTED TO ANDROID to \$manualPhone via SIM \$selectedSim.")
+                            smsManager.sendTextMessage(normalizedPhone, null, payloadStr, null, null)
+                            viewModel.appendSmsLog("[${getTimestamp()}] SMS SUBMITTED TO ANDROID to $normalizedPhone via SIM $selectedSim.")
                         } catch (e: Exception) {
-                            logs.add("[\${getTimestamp()}] ❌ ERROR: Failed to send SMS. Check permissions or SIM credit.")
-                            logs.add("[\${getTimestamp()}] Details: \${e.message}")
+                            viewModel.appendSmsLog("[${getTimestamp()}] ERROR: Failed to send SMS. Check permissions or SIM credit.")
+                            viewModel.appendSmsLog("[${getTimestamp()}] Details: ${e.message}")
                         }
                     }
                 },

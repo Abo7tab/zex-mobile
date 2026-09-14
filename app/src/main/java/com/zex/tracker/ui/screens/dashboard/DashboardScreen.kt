@@ -33,13 +33,15 @@ import com.zex.tracker.service.ZexForegroundService
 fun DashboardScreen(
     prefs: SecurePrefs,
     navController: NavController,
-    viewModel: DashboardViewModel = hiltViewModel()
+    viewModel: DashboardViewModel = hiltViewModel(),
+    bleViewModel: BleRadarViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val devices by viewModel.devices.collectAsState()
     val selectedDevice by viewModel.selectedDevice.collectAsState()
     var isRunning by remember { mutableStateOf(ZexForegroundService.isRunning) }
-    var isBleEnabled by remember { mutableStateOf(true) }
+    var isBleEnabled by remember { mutableStateOf(false) }
+    val lastBlePeer by bleViewModel.lastPeer.collectAsState()
     var isSmsEnabled by remember { mutableStateOf(true) }
 
     val bgColor = Color(0xFFF8FAFC)
@@ -53,17 +55,28 @@ fun DashboardScreen(
 
     LaunchedEffect(Unit) {
         viewModel.fetchDevices()
-        permissionLauncher.launch(
-            arrayOf(
-                android.Manifest.permission.ACCESS_FINE_LOCATION,
-                android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                android.Manifest.permission.READ_PHONE_STATE,
-                android.Manifest.permission.READ_PHONE_NUMBERS,
-                android.Manifest.permission.SEND_SMS,
-                android.Manifest.permission.RECEIVE_SMS,
-                android.Manifest.permission.READ_SMS
-            ) + if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) arrayOf(android.Manifest.permission.POST_NOTIFICATIONS) else emptyArray()
+        val permissions = mutableListOf(
+            android.Manifest.permission.ACCESS_FINE_LOCATION,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION,
+            android.Manifest.permission.READ_PHONE_STATE,
+            android.Manifest.permission.SEND_SMS,
+            android.Manifest.permission.RECEIVE_SMS,
+            android.Manifest.permission.READ_SMS
         )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            permissions += android.Manifest.permission.READ_PHONE_NUMBERS
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            permissions += listOf(
+                android.Manifest.permission.BLUETOOTH_SCAN,
+                android.Manifest.permission.BLUETOOTH_CONNECT,
+                android.Manifest.permission.BLUETOOTH_ADVERTISE
+            )
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions += android.Manifest.permission.POST_NOTIFICATIONS
+        }
+        permissionLauncher.launch(permissions.toTypedArray())
     }
 
     Scaffold(
@@ -166,17 +179,12 @@ fun DashboardScreen(
                             Icon(Icons.Default.Info, contentDescription = null, tint = primaryColor, modifier = Modifier.padding(8.dp))
                         }
                         Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text("C4ISR BACKGROUND SERVICE: ${if (isRunning) "ACTIVE" else "STOPPED"}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier.size(6.dp).background(successColor, RoundedCornerShape(50)))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = successColor)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("", fontSize = 10.sp, color = Color(0xFF64748B))
+                            Column {
+                                Text("C4ISR BACKGROUND SERVICE: ${if (isRunning) "ACTIVE" else "STOPPED"}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                                Text("Heartbeat 60s • Firebase commands • Hourly sync", fontSize = 10.sp, color = Color(0xFF64748B))
+                                Text("Runs location only during Locate/Search/Stolen modes", fontSize = 10.sp, color = Color(0xFF64748B))
                             }
                         }
-                    }
                     Switch(
                         checked = isRunning,
                         onCheckedChange = {
@@ -222,6 +230,29 @@ fun DashboardScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column {
+                    // BLE radar
+                    Row(
+                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("BLE SEARCH RADAR", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF0F172A))
+                            Text(
+                                lastBlePeer?.let { "Peer ${it.hash} • ${"%.5f".format(it.latitude)}, ${"%.5f".format(it.longitude)} • ${if (it.uploaded) "uploaded" else "upload failed"}" }
+                                    ?: "Advertises this phone and uploads discovered peers to Dashboard",
+                                fontSize = 11.sp, color = Color(0xFF64748B), fontFamily = FontFamily.Monospace
+                            )
+                        }
+                        Switch(
+                            checked = isBleEnabled,
+                            onCheckedChange = { isBleEnabled = it; bleViewModel.setEnabled(it) },
+                            colors = SwitchDefaults.colors(checkedTrackColor = primaryColor)
+                        )
+                    }
+
+                    HorizontalDivider()
+
                     // SMS Listener
                     Row(
                         modifier = Modifier.padding(16.dp).fillMaxWidth(),

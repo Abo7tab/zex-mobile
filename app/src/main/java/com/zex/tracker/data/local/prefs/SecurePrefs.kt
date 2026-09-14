@@ -53,6 +53,7 @@ class SecurePrefs @Inject constructor(@ApplicationContext private val context: C
 
     fun putString(key: String, value: String?) = prefs.edit().putString(key, value).apply()
     fun getString(key: String, default: String? = null): String? = prefs.getString(key, default)
+    fun remove(key: String) = prefs.edit().remove(key).apply()
 
     fun putBoolean(key: String, value: Boolean) = prefs.edit().putBoolean(key, value).apply()
     fun getBoolean(key: String, default: Boolean = false): Boolean = prefs.getBoolean(key, default)
@@ -62,6 +63,13 @@ class SecurePrefs @Inject constructor(@ApplicationContext private val context: C
 
     fun putLong(key: String, value: Long) = prefs.edit().putLong(key, value).apply()
     fun getLong(key: String, default: Long = 0L): Long = prefs.getLong(key, default)
+
+    fun appendLine(key: String, value: String, maxLines: Int = 100) {
+        val lines = (getString(key).orEmpty().split("\\n") + value)
+            .filter { it.isNotBlank() }
+            .takeLast(maxLines)
+        putString(key, lines.joinToString("\\n"))
+    }
 
     fun clear() = prefs.edit().clear().apply()
 }

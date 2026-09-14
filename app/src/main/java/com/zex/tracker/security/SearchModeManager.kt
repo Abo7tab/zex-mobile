@@ -19,11 +19,13 @@ class SearchModeManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val deviceRepo: DeviceRepository,
     private val prefs: SecurePrefs,
-    private val networkForcer: NetworkForcer
+    private val networkForcer: NetworkForcer,
+    private val bleMeshManager: BleMeshManager
 ) {
     fun enterSearchMode(reason: String, intervalSeconds: Int) {
         ZexLogger.i("SearchModeManager", "Entering search mode: $reason")
         ServiceController.isSearching = true
+        bleMeshManager.startRadar()
         ServiceController.trackingInterval = (intervalSeconds * 1000).toLong()
         ServiceController(context).startProtection()
     }
@@ -31,6 +33,7 @@ class SearchModeManager @Inject constructor(
     fun exitSearchMode(reason: String) {
         ZexLogger.i("SearchModeManager", "Exiting search mode: $reason")
         ServiceController.isSearching = false
+        bleMeshManager.stopRadar()
         ServiceController.trackingInterval = 15 * 60 * 1000L
         ServiceController(context).startProtection()
     }

@@ -158,11 +158,10 @@ fun NodeLoginScreen(navController: NavController, viewModel: SetupViewModel = hi
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    if (isRegister) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.VpnKey, contentDescription = null, tint = primaryColor, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Security PIN (6 Digits)", fontSize = 10.sp, color = primaryColor, fontWeight = FontWeight.Bold)
+                            Text(if (isRegister) "Security PIN (6 Digits)" else "SMS Authorization PIN (6 Digits)", fontSize = 10.sp, color = primaryColor, fontWeight = FontWeight.Bold)
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(
@@ -171,8 +170,7 @@ fun NodeLoginScreen(navController: NavController, viewModel: SetupViewModel = hi
                             visualTransformation = PasswordVisualTransformation(),
                             singleLine = true
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = primaryColor, modifier = Modifier.size(16.dp))
@@ -216,14 +214,14 @@ fun NodeLoginScreen(navController: NavController, viewModel: SetupViewModel = hi
                     
                     Button(
                         onClick = {
-                            if (isRegister) {
-                                viewModel.registerOwner(RegisterRequest(name, email, phone, password, password, pinCode)) {
+                    if (isRegister) {
+                        viewModel.registerOwner(RegisterRequest(name, email, phone, password, password, pinCode)) {
                                     navController.navigate("device_register") {
                                         popUpTo("node_login") { inclusive = true }
                                     }
                                 }
                             } else {
-                                viewModel.loginOwner(LoginRequest(email, password)) {
+                                viewModel.loginOwner(LoginRequest(email, password), pinCode) {
                                     navController.navigate("device_register") {
                                         popUpTo("node_login") { inclusive = true }
                                     }

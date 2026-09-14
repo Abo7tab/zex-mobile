@@ -158,7 +158,7 @@ class LockActivity : ComponentActivity() {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Security, contentDescription = null, tint = crimson, modifier = Modifier.size(12.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("SEC-LEVEL 5 EMERGENCY PURGE PROTOCOL", color = crimson, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text("SYSTEM LOCK ENGAGED", color = crimson, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 }
                 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -222,7 +222,7 @@ class LockActivity : ComponentActivity() {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFFD97706), modifier = Modifier.size(12.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("GPS: 30.0090° N, 31.1398° E (Lock Acquired)", color = Color(0xFFD97706), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                                    Text("", color = Color(0xFFD97706), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
                                 }
                             }
                         }
