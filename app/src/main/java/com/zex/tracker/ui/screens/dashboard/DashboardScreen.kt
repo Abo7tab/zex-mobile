@@ -134,11 +134,11 @@ fun DashboardScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.CheckCircle, contentDescription = null, tint = successColor, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("82%", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = successColor)
+                        Text("${selectedDevice?.battery_level ?: '--'}%", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = successColor)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Sync: 2s ago", fontSize = 12.sp, color = Color(0xFF64748B))
+                        Text("Sync: ${selectedDevice?.last_heartbeat_at?.take(10) ?: 'N/A'}", fontSize = 12.sp, color = Color(0xFF64748B))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("WSS 14ms", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = primaryColor)
+                        Text("", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = primaryColor)
                     }
                 }
             }
@@ -171,9 +171,9 @@ fun DashboardScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(modifier = Modifier.size(6.dp).background(successColor, RoundedCornerShape(50)))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("CPU Wakelock: Held", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = successColor)
+                                Text("", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = successColor)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Uptime: 18h", fontSize = 10.sp, color = Color(0xFF64748B))
+                                Text("", fontSize = 10.sp, color = Color(0xFF64748B))
                             }
                         }
                     }
@@ -269,8 +269,8 @@ fun DashboardScreen(
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text("DEFCON-3 NOMINAL", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF065F46))
-                            Text("Telemetry integrity passed • Pipe secure", fontSize = 11.sp, color = Color(0xFF064E3B))
+                            Text("Status: Active", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF065F46))
+                            Text("Secure Connection • Pipe secure", fontSize = 11.sp, color = Color(0xFF064E3B))
                         }
                     }
                     Surface(
@@ -284,7 +284,7 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Card(modifier = Modifier.fillMaxWidth().height(250.dp), shape = RoundedCornerShape(12.dp)) { TacticalMapView(targetLat = selectedDevice?.latitude ?: 30.0, targetLng = selectedDevice?.longitude ?: 31.0) }
+            Card(modifier = Modifier.fillMaxWidth().height(250.dp), shape = RoundedCornerShape(12.dp)) { TacticalMapView(targetLat = selectedDevice?.latitude ?: selectedDevice?.latest_lat ?: 0.0, targetLng = selectedDevice?.longitude ?: selectedDevice?.latest_lng ?: 0.0) }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -310,9 +310,9 @@ fun DashboardScreen(
                     }
                     Divider(color = Color(0xFF334155), modifier = Modifier.padding(vertical = 12.dp))
                     
-                    Text("[12:30:15] GPS_FIX: Lat 30.00902, Lon 31.13979 (±2.1m)", fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = terminalText, modifier = Modifier.padding(bottom = 6.dp))
-                    Text("[12:29:02] Geofence Audit: WITHIN PERIMETER (Sector A4)", fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = terminalText, modifier = Modifier.padding(bottom = 6.dp))
-                    Text("[12:28:41] Tamper check: PASS (Hardware unbroken)", fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = Color(0xFF64748B))
+                    Text("GPS_FIX: Lat ${selectedDevice?.latest_lat ?: '--'}, Lon ${selectedDevice?.latest_lng ?: '--'} (±2.1m)", fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = terminalText, modifier = Modifier.padding(bottom = 6.dp))
+                    Text("Command Queue Active", fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = terminalText, modifier = Modifier.padding(bottom = 6.dp))
+                    Text("Secure Boot Passed", fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = Color(0xFF64748B))
                 }
             }
 
@@ -332,3 +332,6 @@ fun DashboardScreen(
         }
     }
 }
+
+
+

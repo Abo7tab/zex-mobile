@@ -308,7 +308,7 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Unknown
                                 }
                             }
                             smsManager.sendTextMessage(manualPhone, null, payloadStr, null, null)
-                            logs.add("[\${getTimestamp()}] ⚡ SMS DELIVERED to \$manualPhone via SIM \$selectedSim.")
+                            logs.add("[\${getTimestamp()}] ⚡ SMS SUBMITTED TO ANDROID to \$manualPhone via SIM \$selectedSim.")
                         } catch (e: Exception) {
                             logs.add("[\${getTimestamp()}] ❌ ERROR: Failed to send SMS. Check permissions or SIM credit.")
                             logs.add("[\${getTimestamp()}] Details: \${e.message}")
@@ -367,3 +367,4 @@ fun getTimestamp(): String {
     val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
     return sdf.format(Date())
 }
+
