@@ -15,7 +15,7 @@ class LiveTerminalLogger @Inject constructor() {
     val logs: StateFlow<List<String>> = _logs.asStateFlow()
 
     fun log(message: String) {
-        val time = SimpleDateFormat("HH:mm:ssZ", Locale.US).format(Date())
+        val time = SimpleDateFormat("HH:mm:ss", Locale.US).format(Date())
         val formatted = "[$time] $message"
         val current = _logs.value.toMutableList()
         current.add(0, formatted) // Add to top
