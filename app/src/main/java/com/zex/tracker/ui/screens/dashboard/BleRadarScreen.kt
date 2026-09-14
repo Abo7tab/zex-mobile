@@ -75,7 +75,7 @@ fun BleRadarScreen(
                 drawLine(Color(0xFF22C55E), Offset(0f, center.y), Offset(size.width, center.y), alpha = .25f)
                 drawCircle(Color(0xFF22C55E), 8f, center)
                 if (peer != null) {
-                    val range = ((peer?.distanceMeters ?: 100.0) / 100.0).coerceIn(.12, .9)
+                    val range = (((peer?.distanceMeters ?: 100.0) / 100.0).coerceIn(.12, .9)).toFloat()
                     drawCircle(Color(0xFF38BDF8), radius * range, center, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4f))
                 }
             }
