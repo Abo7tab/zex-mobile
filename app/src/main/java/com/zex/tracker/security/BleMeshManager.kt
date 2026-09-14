@@ -73,7 +73,7 @@ class BleMeshManager @Inject constructor(
     @Volatile private var targetHash: String? = null
 
     fun setTargetHash(value: String?) {
-        targetHash = value?.filter { it.isLetterOrDigit() }?.takeLast(8)?.uppercase()?.ifBlank { null }
+        targetHash = value?.filter { it.isLetterOrDigit() }?.takeLast(8)?.lowercase()?.ifBlank { null }
     }
 
     @SuppressLint("MissingPermission")
@@ -190,6 +190,9 @@ class BleMeshManager @Inject constructor(
                 api.sendBleRelayLocation(BleRelayPayload(decoded.hash, decoded.latitude, decoded.longitude, decoded.accuracy, decoded.battery, distance))
             } catch (e: Exception) { ZexLogger.e("BleMeshManager", "BLE relay failed", e); null }
             val uploaded = result is retrofit2.Response<*> && result.isSuccessful
+            if (result is retrofit2.Response<*> && !result.isSuccessful) {
+                ZexLogger.w("BleMeshManager", "BLE relay rejected by API: HTTP ${result.code()}")
+            }
             if (uploaded) {
                 try {
                     api.sendActivityLog(ActivityLogPayload(
@@ -236,7 +239,7 @@ class BleMeshManager @Inject constructor(
         if (bytes.size < PAYLOAD_SIZE || bytes[0].toInt() != 0x5A || bytes[1].toInt() != 0x58 || bytes[2].toInt() != 1) return null
         val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
         buffer.position(3)
-        val hash = ByteArray(8).also(buffer::get).toString(Charsets.US_ASCII).trimEnd('\u0000', '_')
+        val hash = ByteArray(8).also(buffer::get).toString(Charsets.US_ASCII).trimEnd('\u0000', '_').lowercase()
         val latitude = buffer.int / SCALE
         val longitude = buffer.int / SCALE
         val battery = buffer.get().toInt() and 0xFF
@@ -245,5 +248,5 @@ class BleMeshManager @Inject constructor(
         return Decoded(hash, latitude, longitude, battery, accuracy)
     }
 
-    private fun deviceHash(): String = prefs.getString(ZexConstants.KEY_DEVICE_UID).orEmpty().takeLast(8).padEnd(8, '_')
+    private fun deviceHash(): String = prefs.getString(ZexConstants.KEY_DEVICE_UID).orEmpty().takeLast(8).lowercase().padEnd(8, '_')
 }
