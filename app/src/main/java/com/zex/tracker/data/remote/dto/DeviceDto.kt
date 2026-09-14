@@ -23,5 +23,7 @@ data class DeviceDto(
     val android_version: String,
     val alarm_secret: String? = null,
     val phone_number: String? = null,
-    val battery_level: Int? = null
+    val battery_level: Int? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )

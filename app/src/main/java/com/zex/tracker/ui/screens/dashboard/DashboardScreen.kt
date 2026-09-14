@@ -292,7 +292,7 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Card(modifier = Modifier.fillMaxWidth().height(250.dp), shape = RoundedCornerShape(12.dp)) { TacticalMapView(targetLat = 30.0, targetLng = 31.0) }
+            Card(modifier = Modifier.fillMaxWidth().height(250.dp), shape = RoundedCornerShape(12.dp)) { TacticalMapView(targetLat = selectedDevice?.latitude ?: 30.0, targetLng = selectedDevice?.longitude ?: 31.0) }
 
             Spacer(modifier = Modifier.height(12.dp))
 

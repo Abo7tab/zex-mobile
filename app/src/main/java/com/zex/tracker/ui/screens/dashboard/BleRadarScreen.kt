@@ -55,6 +55,7 @@ fun BleRadarScreen(navController: NavController, deviceName: String = "RMX2020",
         viewModel.bleFoundDevices.collect { pair ->
             val hash = pair.first
             val rssi = pair.second
+            if (selectedDevice?.device_uid != null && !hash.contains(selectedDevice!!.device_uid.take(8), true)) return@collect
             val existingIdx = blips.indexOfFirst { it.hash == hash }
             if (existingIdx >= 0) {
                 blips[existingIdx] = RadarBlip(hash, rssi, System.currentTimeMillis())

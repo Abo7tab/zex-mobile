@@ -63,6 +63,8 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Redmi N
     
     val devices by viewModel.devices.collectAsState()
     val selectedDevice by viewModel.selectedDevice.collectAsState()
+    val currentDeviceName = selectedDevice?.device_name ?: selectedDevice?.device_uid ?: deviceName
+    val currentPhone = selectedDevice?.phone_number ?: phone
     val bgColor = Color(0xFFF8FAFC)
     val cardColor = Color(0xFFFFFFFF)
     val primaryColor = Color(0xFF2563EB)
@@ -113,8 +115,8 @@ fun SmsControlScreen(navController: NavController, deviceName: String = "Redmi N
                 Spacer(modifier = Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text("REGISTERED TARGET", fontSize = 10.sp, color = slate800, fontWeight = FontWeight.Bold)
-                    Text(deviceName, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = slate900)
-                    Text(phone, fontSize = 12.sp, color = slate800)
+                    Text(currentDeviceName, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = slate900)
+                    Text(currentPhone, fontSize = 12.sp, color = slate800)
                 }
                 Surface(shape = RoundedCornerShape(50), color = primaryColor.copy(alpha = 0.1f), modifier = Modifier.size(36.dp)) {
                     Icon(Icons.Default.GpsFixed, contentDescription = null, tint = primaryColor, modifier = Modifier.padding(8.dp))
