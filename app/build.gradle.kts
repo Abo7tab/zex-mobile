@@ -27,7 +27,7 @@ android {
         // Multi-language support
         resourceConfigurations += listOf("en", "ar")
         
-        buildConfigField("String", "API_BASE_URL", "\"https://ab7tb.alwaysdata.net/api/v1/\"")
+        buildConfigField("String", "API_BASE_URL", "\"https://zex.alwaysdata.net/api/\"")
         buildConfigField("String", "FIREBASE_DB_URL", "\"https://zex-12-default-rtdb.europe-west1.firebasedatabase.app\"")
     }
 

@@ -26,103 +26,121 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.zex.tracker.data.remote.dto.LoginRequest
+import com.zex.tracker.data.remote.dto.RegisterRequest
 import com.zex.tracker.ui.screens.setup.SetupViewModel
 
 @Composable
 fun NodeLoginScreen(navController: NavController, viewModel: SetupViewModel = hiltViewModel()) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var showPassword by remember { mutableStateOf(false) }
-
-    val state by viewModel.uiState.collectAsState()
+    var isRegister by remember { mutableStateOf(false) }
     
-    val bgColor = Color(0xFFF8FAFC)
-    val cardColor = Color(0xFFFFFFFF)
+    var name by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var pinCode by remember { mutableStateOf("") }
+    
+    var showPassword by remember { mutableStateOf(false) }
+    val state by viewModel.uiState.collectAsState()
+
     val primaryColor = Color(0xFF2563EB)
-    val successColor = Color(0xFF10B981)
+    val successColor = Color(0xFF16A34A)
+    val bgColor = Color(0xFFF8FAFC)
     val slate800 = Color(0xFF1E293B)
     val slate400 = Color(0xFF94A3B8)
-    
-    Scaffold(
-        containerColor = bgColor
-    ) { padding ->
+    val cardColor = Color.White
+
+    Box(modifier = Modifier.fillMaxSize().background(bgColor)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
             
-            // Top Badge
-            Surface(shape = RoundedCornerShape(20.dp), color = Color(0xFFF1F5F9)) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                    Box(modifier = Modifier.size(6.dp).background(successColor, RoundedCornerShape(50)))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("SEC-OPS LEVEL 1 • ACTIVE", color = slate800, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            // Header Badge
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = successColor.copy(alpha = 0.1f),
+                modifier = Modifier.border(1.dp, successColor.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+            ) {
+                Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(successColor))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("SECURE TLS 1.3 CONNECTION", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = successColor)
                 }
             }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            Text("TACTICAL NODE\nINITIALIZATION", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = slate800, textAlign = TextAlign.Center, lineHeight = 34.sp)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Enter operator credentials to authenticate this device as a command or target node in the mesh network.", fontSize = 14.sp, color = slate400, textAlign = TextAlign.Center, lineHeight = 20.sp)
             
             Spacer(modifier = Modifier.height(32.dp))
             
-            // Logo Icon
-            Box(contentAlignment = Alignment.BottomEnd) {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = cardColor,
-                    shadowElevation = 8.dp,
-                    modifier = Modifier.size(80.dp)
+            // Tabs
+            Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFE2E8F0)).padding(4.dp)) {
+                Box(
+                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).background(if (!isRegister) cardColor else Color.Transparent)
+                        .clickable { isRegister = false }.padding(12.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Security, contentDescription = null, tint = primaryColor, modifier = Modifier.padding(20.dp))
+                    Text("LOGIN", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (!isRegister) primaryColor else slate400)
                 }
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = primaryColor,
-                    modifier = Modifier.size(24.dp).offset(x = 8.dp, y = 8.dp),
-                    shadowElevation = 4.dp
+                Box(
+                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).background(if (isRegister) cardColor else Color.Transparent)
+                        .clickable { isRegister = true }.padding(12.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.padding(4.dp))
+                    Text("REGISTER", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isRegister) primaryColor else slate400)
                 }
             }
             
             Spacer(modifier = Modifier.height(24.dp))
-            
-            Text("TACTICAL NODE INITIALIZATION", color = slate800, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Authenticate operator credentials to bind this mobile hardware to the C4ISR command center.", color = slate400, fontSize = 13.sp, textAlign = TextAlign.Center, lineHeight = 20.sp)
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Surface(shape = RoundedCornerShape(20.dp), color = successColor.copy(alpha = 0.1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                    Icon(Icons.Default.Lock, contentDescription = null, tint = successColor, modifier = Modifier.size(12.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("ENCRYPTED TLS 1.3 SECURE CHANNEL", color = successColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
+
             // Form Card
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = cardColor),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Top Green line indicator
-                Box(modifier = Modifier.fillMaxWidth().height(4.dp).background(successColor))
-                
+            Surface(shape = RoundedCornerShape(20.dp), color = cardColor, shadowElevation = 4.dp, modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(24.dp)) {
-                    if (state.error != null) {
-                        Text(state.error!!, color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(bottom = 12.dp))
+                    
+                    if (!state.error.isNullOrEmpty()) {
+                        Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFFEE2E2), modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+                            Text(state.error!!, color = Color(0xFFB91C1C), fontSize = 12.sp, modifier = Modifier.padding(12.dp))
+                        }
                     }
                     
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Operator Identifier", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = slate800)
-                        Text("MIL-NET SSO", fontSize = 10.sp, color = slate400, fontWeight = FontWeight.Bold)
+                    if (isRegister) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Person, contentDescription = null, tint = primaryColor, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Operator Name", fontSize = 10.sp, color = primaryColor, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = name, onValueChange = { name = it }, modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = bgColor, unfocusedContainerColor = bgColor, focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent),
+                            singleLine = true
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Phone, contentDescription = null, tint = primaryColor, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Phone Number", fontSize = 10.sp, color = primaryColor, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = phone, onValueChange = { phone = it }, modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = bgColor, unfocusedContainerColor = bgColor, focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent),
+                            singleLine = true
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Badge, contentDescription = null, tint = primaryColor, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Operator Identifier (Email)", fontSize = 10.sp, color = primaryColor, fontWeight = FontWeight.Bold)
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
@@ -131,21 +149,35 @@ fun NodeLoginScreen(navController: NavController, viewModel: SetupViewModel = hi
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = bgColor,
-                            unfocusedContainerColor = bgColor,
-                            focusedBorderColor = Color.Transparent,
-                            unfocusedBorderColor = Color.Transparent
+                            focusedContainerColor = bgColor, unfocusedContainerColor = bgColor,
+                            focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent
                         ),
-                        placeholder = { Text("operator@c4isr.zex.mil", fontSize = 13.sp, color = slate400) },
-                        leadingIcon = { Icon(Icons.Default.AccountBox, contentDescription = null, tint = slate400, modifier = Modifier.size(20.dp)) },
+                        leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = slate400, modifier = Modifier.size(20.dp)) },
                         singleLine = true
                     )
                     
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Operator Security Token", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = slate800)
-                        Text("Emergency Bypass Code", fontSize = 10.sp, color = primaryColor, fontWeight = FontWeight.Bold)
+                    if (isRegister) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.VpnKey, contentDescription = null, tint = primaryColor, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Security PIN (6 Digits)", fontSize = 10.sp, color = primaryColor, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = pinCode, onValueChange = { pinCode = it }, modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = bgColor, unfocusedContainerColor = bgColor, focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent),
+                            visualTransformation = PasswordVisualTransformation(),
+                            singleLine = true
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = primaryColor, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Operator Security Token", fontSize = 10.sp, color = primaryColor, fontWeight = FontWeight.Bold)
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
@@ -154,10 +186,8 @@ fun NodeLoginScreen(navController: NavController, viewModel: SetupViewModel = hi
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = bgColor,
-                            unfocusedContainerColor = bgColor,
-                            focusedBorderColor = Color.Transparent,
-                            unfocusedBorderColor = Color.Transparent
+                            focusedContainerColor = bgColor, unfocusedContainerColor = bgColor,
+                            focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent
                         ),
                         visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                         leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = slate400, modifier = Modifier.size(20.dp)) },
@@ -186,9 +216,17 @@ fun NodeLoginScreen(navController: NavController, viewModel: SetupViewModel = hi
                     
                     Button(
                         onClick = {
-                            viewModel.loginOwner(LoginRequest(email, password)) {
-                                navController.navigate("device_register") {
-                                    popUpTo("node_login") { inclusive = true }
+                            if (isRegister) {
+                                viewModel.registerOwner(RegisterRequest(name, email, phone, password, password, pinCode)) {
+                                    navController.navigate("device_register") {
+                                        popUpTo("node_login") { inclusive = true }
+                                    }
+                                }
+                            } else {
+                                viewModel.loginOwner(LoginRequest(email, password)) {
+                                    navController.navigate("device_register") {
+                                        popUpTo("node_login") { inclusive = true }
+                                    }
                                 }
                             }
                         },
@@ -200,69 +238,15 @@ fun NodeLoginScreen(navController: NavController, viewModel: SetupViewModel = hi
                         if (state.isLoading) {
                             CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                         } else {
-                            Icon(Icons.Default.Key, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(if (isRegister) Icons.Default.PersonAdd else Icons.Default.Key, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("VERIFY CREDENTIALS", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(if (isRegister) "REGISTER CREDENTIALS" else "VERIFY CREDENTIALS", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             Spacer(modifier = Modifier.width(8.dp))
                             Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
                         }
                     }
                 }
             }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Divider(modifier = Modifier.weight(1f), color = slate400.copy(alpha = 0.3f))
-                Text(" OR ALTERNATIVE METHOD ", fontSize = 10.sp, color = slate400, fontWeight = FontWeight.Bold)
-                Divider(modifier = Modifier.weight(1f), color = slate400.copy(alpha = 0.3f))
-            }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Fast Pair Card
-            Surface(shape = RoundedCornerShape(16.dp), color = cardColor, shadowElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
-                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Surface(shape = RoundedCornerShape(12.dp), color = primaryColor.copy(alpha = 0.1f), modifier = Modifier.size(48.dp)) {
-                        Icon(Icons.Default.QrCodeScanner, contentDescription = null, tint = primaryColor, modifier = Modifier.padding(12.dp))
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Web Dashboard Fast-Pair", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = slate800)
-                        Text("Scan authorization token from C4ISR portal", fontSize = 12.sp, color = slate400, lineHeight = 16.sp)
-                    }
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = slate800, modifier = Modifier.size(16.dp))
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Biometric Card
-            Surface(shape = RoundedCornerShape(16.dp), color = cardColor, shadowElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
-                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Surface(shape = RoundedCornerShape(12.dp), color = successColor.copy(alpha = 0.1f), modifier = Modifier.size(48.dp)) {
-                        Icon(Icons.Default.Fingerprint, contentDescription = null, tint = successColor, modifier = Modifier.padding(12.dp))
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Biometric Hardware Passkey", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = slate800)
-                        Text("Operator touch identity profile enrolled", fontSize = 12.sp, color = slate400, lineHeight = 16.sp)
-                    }
-                    Surface(shape = RoundedCornerShape(8.dp), color = primaryColor.copy(alpha = 0.1f)) {
-                        Text("SCAN", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = slate800, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
-                    }
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Memory, contentDescription = null, tint = slate400, modifier = Modifier.size(12.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("NODE HARDWARE #ZEX-904-TX", fontSize = 10.sp, color = slate400, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text("ZEX C4ISR Protocol • Zero-Trust Mobile Node Spec v2.4\n• MIL-STD-810H Enclave Verified", fontSize = 9.sp, color = slate400, textAlign = TextAlign.Center, lineHeight = 14.sp)
             
             Spacer(modifier = Modifier.height(24.dp))
         }

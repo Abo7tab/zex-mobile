@@ -1,4 +1,4 @@
-﻿package com.zex.tracker.core.logging
+package com.zex.tracker.core.logging
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,10 +14,8 @@ class LiveTerminalLogger @Inject constructor() {
     private val _logs = MutableStateFlow<List<String>>(emptyList())
     val logs: StateFlow<List<String>> = _logs.asStateFlow()
 
-    private val dateFormat = SimpleDateFormat("HH:mm:ssZ", Locale.US)
-
     fun log(message: String) {
-        val time = dateFormat.format(Date())
+        val time = SimpleDateFormat("HH:mm:ssZ", Locale.US).format(Date())
         val formatted = "[$time] $message"
         val current = _logs.value.toMutableList()
         current.add(0, formatted) // Add to top
