@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
+import android.location.LocationManager
 import android.os.Looper
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -29,7 +30,7 @@ class LocationTracker @Inject constructor(
             ZexLogger.w("LocationTracker", "Location permission denied. Failing gracefully.")
             return null
         }
-        return try {
+        val freshLocation = try {
             fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).await()
         } catch (e: SecurityException) {
             ZexLogger.e("LocationTracker", "SecurityException getting location", e)
@@ -38,6 +39,22 @@ class LocationTracker @Inject constructor(
             ZexLogger.e("LocationTracker", "Failed to get location", e)
             null
         }
+
+        if (freshLocation != null) return freshLocation
+
+        val fusedLastLocation = try {
+            fusedLocationClient.lastLocation.await()
+        } catch (e: SecurityException) {
+            ZexLogger.e("LocationTracker", "SecurityException getting fused last location", e)
+            null
+        } catch (e: Exception) {
+            ZexLogger.w("LocationTracker", "Fused last location unavailable: ${e.message}")
+            null
+        }
+
+        if (fusedLastLocation != null) return fusedLastLocation
+
+        return getBestLastKnownLocation()
     }
 
     fun startContinuous(intervalMs: Long, onLocation: (Location) -> Unit) {
@@ -81,5 +98,28 @@ class LocationTracker @Inject constructor(
     private fun hasLocationPermission(): Boolean {
         return ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun getBestLastKnownLocation(): Location? {
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return null
+        val providers = listOf(
+            LocationManager.GPS_PROVIDER,
+            LocationManager.NETWORK_PROVIDER,
+            LocationManager.PASSIVE_PROVIDER
+        )
+
+        return providers
+            .mapNotNull { provider ->
+                try {
+                    locationManager.getLastKnownLocation(provider)
+                } catch (e: SecurityException) {
+                    ZexLogger.e("LocationTracker", "SecurityException getting last known $provider", e)
+                    null
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            .maxByOrNull { it.time }
     }
 }
