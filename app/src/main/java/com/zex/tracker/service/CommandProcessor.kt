@@ -14,7 +14,6 @@ import com.zex.tracker.security.ScreamManager
 import com.zex.tracker.security.location.LocationTracker
 import com.zex.tracker.ui.screens.scream.ScreamActivity
 import com.zex.tracker.ui.screens.lock.LockActivity
-import com.zex.tracker.data.remote.ApiResult
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -101,12 +100,7 @@ class CommandProcessor @Inject constructor(
 
     private suspend fun handleLocate() {
         val loc = locationTracker.getCurrentLocation()
-            ?: throw IllegalStateException("GPS location unavailable. Check location permission and GPS state.")
-
-        when (val result = deviceRepo.sendLocation(loc)) {
-            is ApiResult.Success -> ZexLogger.i("CommandProcessor", "Location uploaded successfully")
-            is ApiResult.Error -> throw IllegalStateException("Location upload failed: ${result.message}")
-        }
+        if (loc != null) deviceRepo.sendLocation(loc)
     }
 
     private fun handleScream() {
